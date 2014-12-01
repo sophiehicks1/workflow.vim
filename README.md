@@ -1,11 +1,3 @@
-# THIS IS NOT FINISHED YET!
-This plugin is work in progress, so the instructions below aren't implemented yet (or alternatively
-they're wrong).
-
-If the concept of this plugin interests you though, it's probably worth checking back once every
-couple of weeks or so... I *will* finish it within a couple of months at most, because I actually
-need to use it!
-
 # workflow.vim
 
 I take lots of notes in vim for lots of different purposes and in lots of different ways. Over time
@@ -33,22 +25,29 @@ as simple as configuring a few variables.
 For example this configuration...
 
 ``` {.vim}
-let blog = {}
-let blog['name'] = "Blog"
-let blog['use-date'] = 1
-let blog['root'] = '~/MyBlog'
-let blog['nested'] = 0
-let blog['title-mandatory'] = 1
-let blog['filetype'] = 'html'
-let blog['on-load'] = 'DoWhat :w<CR>:!open %'
-
-call notes#createWorkflow(blog)
+let g:struct_workflows = {
+      \"Blog":    {
+      \             'root': '~/blog/posts',
+      \             'date': 1,
+      \             'mandatory-title': 1,
+      \             'ext': 'html'
+      \           }
+      \}
 ```
 
 ... will create a `:Blog <title>` command that creates a new blog post. It does this by opening a
-new html file in `~/MyBlog`. It names the file using todays date (YYYY-MM-DD), followed by the title
-with non-word chars removed and spaces replaced with dashes. The file is opened with the `:DoWhat`
-command preset to `:w<CR>:!open %`.
+new html file in `~/blog/posts`, naming the file using todays date (YYYY-MM-DD), followed by the title
+with non-word chars removed and spaces replaced with dashes, so `:Blog This is awesome` would open
+`~/blog/posts/2014-12-01-this-is-awesome.html` (assuming the command was executed on 1st December
+2014)
 
 That configuration will also create matching TBlog, SBlog and VBlog commands to open the file in a
 new tab, split and vert split respectively.
+
+## Upcoming features
+
+The following features aren't working yet, but will any luck I'll add them soon.
+
+- Autocompletion for all Ex commands
+- On open commands, that run when a new buffer is opened
+

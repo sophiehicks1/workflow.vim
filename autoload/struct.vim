@@ -3,37 +3,16 @@ if exists("g:did_autoload_struct")
 endif
 let g:did_autoload_struct = 1
 
-if !exists("g:struct_workflows")
-  finish
-endif
-
-" FIXME move to .vimrc, set up proper workflows and remove active.vim and
-" mdpp.vim file management stuff
-unlet g:struct_workflows
-let g:struct_workflows = {
-      \"Capture": {
-      \             'root': "~/Dropbox/SyncedNotes/capture",
-      \             'date': 1,
-      \             'ext': "md"
-      \           },
-      \"Note":    {
-      \             'root': "~/Dropbox/SyncedNotes/notes",
-      \             'nested': 1,
-      \             'ext': "md"
-      \           },
-      \"Memo":    {
-      \             'root': "~/Dropbox/SyncedNotes/temp",
-      \             'ext': "md"
-      \           }
-      \}
-
-" FEATURES
-" - autocomplete for ex commands (TODO)
-"     - this will have to be clever when dealing with dates (TODO)
-"
-" Things to do in the plugin file
-" - validate workflows (eg. no date or mandatory title is invalid) (TODO)
-" - Ex commands for all workflows (TODO)
+" TODO
+" - autocomplete for ex commands
+"   - 'title' should complete to '2014-12-01-title' when the workflow has
+"     dates
+"   - 'dir' should complete to 'directory/' when the workflow is nested
+"   - 'directory/' should complete to anything inside 'directory/' when the
+"     workfow is nested
+"   - 'filename' should complete to 'directory/filename' when the workflow is
+"     nested
+" - onopen scripts (for use with DoWhat)
 
 function! s:date()
   return substitute(system('date +%Y-%m-%d'), "\n", '', '')
@@ -149,9 +128,53 @@ function! struct#openFile(workflowName, splitType, ...)
   end
 endfunction
 
-function! struct#makeExCommands(name)
+function! s:makeExCommands(name)
   execute 'command! -nargs=? '.a:name." call struct#openFile('".a:name."', '', <f-args>)"
   execute 'command! -nargs=? H'.a:name." call struct#openFile('".a:name."', 'split', <f-args>)"
   execute 'command! -nargs=? V'.a:name." call struct#openFile('".a:name."', 'vert', <f-args>)"
   execute 'command! -nargs=? T'.a:name." call struct#openFile('".a:name."', 'tab', <f-args>)"
+endfunction
+
+function! s:rootIsDirectory(workflow)
+  return isdirectory(fnamemodify(a:workflow['root'], ":p"))
+endfunction
+
+function! s:errorsForWorkflow(name)
+  let workflow = g:struct_workflows[a:name]
+  let errors = []
+  if !has_key(workflow, 'ext')
+    call add(errors, "does not contain the mandatory 'ext' key")
+  endif
+  if !has_key(workflow, 'root')
+    call add(errors, "does not contain the mandatory 'root' key")
+  endif
+  if !s:rootIsDirectory(workflow)
+    call add(errors, "root directory '".workflow['root']."' does not exist")
+  endif
+  return errors
+endfunction
+
+function! s:echoError(error)
+  echohl WarningMsg
+  echom a:error
+  echohl None
+endfunction
+
+function! s:initializeWorkflow(name)
+  let errors = s:errorsForWorkflow(a:name)
+  if len(errors) > 0
+    for error in errors
+      call s:echoError("Invalid workflow '".a:name."' - ".error)
+    endfor
+  else
+    call s:makeExCommands(a:name)
+  endif
+endfunction
+
+function! struct#initialize()
+  if exists("g:struct_workflows")
+    for name in keys(g:struct_workflows)
+      call s:initializeWorkflow(name)
+    endfor
+  endif
 endfunction
