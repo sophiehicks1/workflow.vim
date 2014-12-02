@@ -48,6 +48,6 @@ new tab, split and vert split respectively.
 
 The following features aren't working yet, but will any luck I'll add them soon.
 
-- Autocompletion for all Ex commands
+- Autocompletion for all ex commands
 - On open commands, that run when a new buffer is opened
-
+- Workflow specific ex commands for use inside a buffer opened using a workflow command
