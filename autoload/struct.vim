@@ -118,6 +118,12 @@ function! s:openFile(splitType, path)
   execute command
 endfunction
 
+function! struct#openDir(workflowName, splitType)
+  let workflow = g:struct_workflows[a:workflowName]
+  let root = workflow['root']
+  call s:openFile(a:splitType, root)
+endfunction
+
 function! struct#openFile(workflowName, splitType, ...)
   let locator = len(a:000) ? a:1 : ''
   let workflow = g:struct_workflows[a:workflowName]
@@ -133,6 +139,10 @@ function! s:makeExCommands(name)
   execute 'command! -nargs=? H'.a:name." call struct#openFile('".a:name."', 'split', <f-args>)"
   execute 'command! -nargs=? V'.a:name." call struct#openFile('".a:name."', 'vert', <f-args>)"
   execute 'command! -nargs=? T'.a:name." call struct#openFile('".a:name."', 'tab', <f-args>)"
+  execute 'command! -nargs=0 '.a:name."List call struct#openDir('".a:name."', '')"
+  execute 'command! -nargs=0 H'.a:name."List call struct#openDir('".a:name."', 'split')"
+  execute 'command! -nargs=0 V'.a:name."List call struct#openDir('".a:name."', 'vert')"
+  execute 'command! -nargs=0 T'.a:name."List call struct#openDir('".a:name."', 'tab')"
 endfunction
 
 function! s:rootIsDirectory(workflow)

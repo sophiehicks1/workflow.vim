@@ -44,10 +44,17 @@ with non-word chars removed and spaces replaced with dashes, so `:Blog This is a
 That configuration will also create matching TBlog, SBlog and VBlog commands to open the file in a
 new tab, split and vert split respectively.
 
+## Managing lists of files
+
+In addition to the commands which open new files, each workflow defines 4 commands to open the root
+directory of that workflow. Using the above "Blog" example, these would be `:BlogList`,
+`:VBlogList`, `:TBlogList` and `:SBlogList`. When combined with tpopes vim-vinegar plugin, this
+makes for a simple but effective way to manage and navigate the files you've already created using a
+particular workflow.
+
 ## Upcoming features
 
 The following features aren't working yet, but will any luck I'll add them soon.
 
 - Autocompletion for all ex commands
 - On open commands, that run when a new buffer is opened
-- Workflow specific ex commands for use inside a buffer opened using a workflow command
