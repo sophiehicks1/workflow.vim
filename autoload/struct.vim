@@ -34,15 +34,22 @@ function! s:has_nested(workflow)
   return s:has_key(a:workflow, 'nested')
 endfunction
 
+function! s:sanitize_title(title)
+  let without_spaces = substitute(a:title, '[[:space:]][[:space:]]*', '-', 'g')
+  let lower_case = tolower(without_spaces)
+  return substitute(lower_case, '[^a-z0-9\-]', '', 'g')
+endfunction
+
 function! s:make_filename(workflow, title)
   let name = ''
   if s:has_date(a:workflow)
     let name = name . s:date()
   endif
-  if len(name) && len(a:title)
+  let title = s:sanitize_title(a:title)
+  if len(name) && len(title)
     let name = name . '-'
   endif
-  let name = name . a:title . '.' . a:workflow['ext']
+  let name = name . title . '.' . a:workflow['ext']
   return name
 endfunction
 
