@@ -16,7 +16,7 @@ other workflows. Sometimes the directory structure is nested, sometimes it's fla
   'YYYY-MM-DD-TITLE' where the date is almost always the date the file was first created. All my
 workflows use only word chars and '-' in the file names.
 
-- *On load commands:* For each workflow there are is a very specific set of vim commands that I want
+- *On load/create commands:* For each workflow there are is a very specific set of vim commands that I want
   executed immediately.
 
 This plugin is designed to make the creation of a set of note-taking-workflow specific vim commands,
@@ -52,9 +52,35 @@ directory of that workflow. Using the above "Blog" example, these would be `:Blo
 makes for a simple but effective way to manage and navigate the files you've already created using a
 particular workflow.
 
+## Running commands automatically on load/create
+
+If you add the 'onload' key to a workflow, then the value will be executed each time you load a file
+using one of the workflow ex commands. Similarly, the 'oncreate' value will be executed each time you create
+a new file using one of the workflow ex commands. The name of the file being created will be
+available to this command as \<FILE\>
+
+An example of this is the following workflow that I actually use.
+
+``` {.vim}
+    "Capture": {
+                  'root': "~/Notes/capture",
+                  'date': 1,
+                  'ext': "md",
+                  'oncreate': "Todo process '<FILE>'"
+                },
+```
+
+Let's say I go into a meeting with my colleague Tom, I would run `:Capture meeting with tom`. This
+opens a buffer containing a file called "2015-02-27-meeting-with-tom.md" which I use to take ad hoc
+notes during that meeting. Since this is a new buffer, it also runs `:Todo process
+/Users/simon/Notes/capture/2015-02-27-meeting-with-tom.md` which adds an item to my todo list to
+process the notes in that file (either by migrating the notes to a more permanent location or by
+actually taking action).
+
+
 ## Upcoming features
 
 The following features aren't working yet, but will any luck I'll add them soon.
 
+- File specific autocommands for files created by workflows
 - Autocompletion for all ex commands
-- On open commands, that run when a new buffer is opened

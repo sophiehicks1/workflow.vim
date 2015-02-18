@@ -135,9 +135,13 @@ function! struct#openFile(workflowName, splitType, ...)
   let locator = len(a:000) ? a:1 : ''
   let workflow = g:struct_workflows[a:workflowName]
   let path = s:path(workflow, locator)
+  let isExistingFile = filereadable(path)
   call s:openFile(a:splitType, path)
   if has_key(workflow, 'onload')
-    execute workflow['onload']
+    execute substitute(workflow['onload'], '<[Ff][Ii][Ll][Ee]>', path, 'g')
+  end
+  if (! isExistingFile) && has_key(workflow, 'oncreate')
+    execute substitute(workflow['oncreate'], '<[Ff][Ii][Ll][Ee]>', path, 'g')
   end
 endfunction
 
