@@ -12,7 +12,6 @@ let g:did_autoload_struct = 1
 "     workfow is nested
 "   - 'filename' should complete to 'directory/filename' when the workflow is
 "     nested
-" - onopen scripts (for use with DoWhat)
 
 function! s:date()
   return substitute(system('date +%Y-%m-%d'), "\n", '', '')
@@ -121,7 +120,7 @@ function! s:openFile(splitType, path)
     let command = s:newBufferCommand(splitType, a:path)
   else
     let command = s:existingBufferCommand(splitType, existingBufferNum)
-  endif 
+  endif
   execute command
 endfunction
 
@@ -142,6 +141,12 @@ function! struct#openFile(workflowName, splitType, ...)
   end
   if (! isExistingFile) && has_key(workflow, 'oncreate')
     execute substitute(workflow['oncreate'], '<[Ff][Ii][Ll][Ee]>', path, 'g')
+  end
+  if has_key(workflow, 'autocmd')
+    let cmds = workflow['autocmd']
+    for key in keys(cmds)
+      execute 'au! '.key.' <buffer> '.cmds[key]
+    endfor
   end
 endfunction
 

@@ -77,10 +77,26 @@ notes during that meeting. Since this is a new buffer, it also runs `:Todo proce
 process the notes in that file (either by migrating the notes to a more permanent location or by
 actually taking action).
 
+## Setting workflow specific autocmds
+
+Sometimes it's also useful to set up vim autocmds within a file created by a workflow ex command.
+Here's another example that I use:
+
+    "Journal": {
+                 'root': '~/journal/posts',
+                 'date': 1,
+                 'ext': 'md',
+                 'autocmd': {
+                   'BufWritePost': 'call PandocPreview("~/Desktop/out.html")'
+                 }
+               }
+
+This sets up an autocmd which uses pandoc to regenerate an html version of the current file every
+time the file is saved.
 
 ## Upcoming features
 
 The following features aren't working yet, but will any luck I'll add them soon.
 
-- File specific autocommands for files created by workflows
-- Autocompletion for all ex commands
+- Autocompletion for ex commands
+- Templates
