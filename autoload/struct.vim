@@ -187,7 +187,7 @@ function! struct#openFile(workflowName, splitType, ...)
     end
     call s:executeHooks(workflow, path, isNewFile)
     call s:setAutocmds(workflow)
-  catch "Invalid file locator ''"
+  catch /Invalid file locator ''/
     call s:echoError("Workflow '".a:workflowName."' requires a title")
   endtry
 endfunction
