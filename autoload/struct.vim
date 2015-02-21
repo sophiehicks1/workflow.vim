@@ -74,6 +74,7 @@ endfunction
 
 function! s:path(workflow, locator)
   let locator = s:parse_locator(a:workflow, a:locator)
+  echom string(locator)
   if s:has_mandatory_title(a:workflow) && !len(locator['title'])
     throw "Invalid file locator '" . a:locator . "'"
   endif
@@ -113,15 +114,18 @@ function! s:existingBufferCommand(splitType, notesBufferNum)
   endif
 endfunction
 
+" return true if a new buffer was created
 function! s:openFile(splitType, path)
   let splitType = s:safeSplitType(a:splitType)
   let existingBufferNum = bufnr(a:path)
-  if existingBufferNum ==# -1
+  let isNewBuffer = (existingBufferNum ==# -1)
+  if isNewBuffer
     let command = s:newBufferCommand(splitType, a:path)
   else
     let command = s:existingBufferCommand(splitType, existingBufferNum)
   endif
   execute command
+  return isNewBuffer
 endfunction
 
 function! struct#openDir(workflowName, splitType)
@@ -130,24 +134,59 @@ function! struct#openDir(workflowName, splitType)
   call s:openFile(a:splitType, root)
 endfunction
 
-function! struct#openFile(workflowName, splitType, ...)
-  let locator = len(a:000) ? a:1 : ''
-  let workflow = g:struct_workflows[a:workflowName]
-  let path = s:path(workflow, locator)
-  let isExistingFile = filereadable(path)
-  call s:openFile(a:splitType, path)
-  if has_key(workflow, 'onload')
-    execute substitute(workflow['onload'], '<[Ff][Ii][Ll][Ee]>', path, 'g')
+function! s:executeHooks(workflow, path, isNewFile)
+  if has_key(a:workflow, 'onload')
+    execute substitute(a:workflow['onload'], '<[Ff][Ii][Ll][Ee]>', a:path, 'g')
   end
-  if (! isExistingFile) && has_key(workflow, 'oncreate')
-    execute substitute(workflow['oncreate'], '<[Ff][Ii][Ll][Ee]>', path, 'g')
+  if a:isNewFile && has_key(a:workflow, 'oncreate')
+    execute substitute(a:workflow['oncreate'], '<[Ff][Ii][Ll][Ee]>', a:path, 'g')
   end
-  if has_key(workflow, 'autocmd')
-    let cmds = workflow['autocmd']
+endfunction
+
+function! s:setAutocmds(workflow)
+  if has_key(a:workflow, 'autocmd')
+    let cmds = a:workflow['autocmd']
     for key in keys(cmds)
       execute 'au! '.key.' <buffer> '.cmds[key]
     endfor
   end
+endfunction
+
+function! s:makeSubstitutions()
+  let curr = 0
+  let subspattern = '{{{\(\(}\?}\?[^}]\)*\)}}}'
+  while curr <= line("$")
+    let currline = getline(curr)
+    while match(currline, subspattern) != -1
+      let list = matchlist(currline, subspattern)
+      call setline(curr, substitute(currline, '\V'.list[0], '\='.list[1], ''))
+      let currline = getline(curr)
+    endwhile
+    let curr = curr + 1
+  endwhile
+endfunction
+
+function! s:loadTemplate(workflow)
+  if has_key(a:workflow, 'template')
+    execute "norm! V:read ".a:workflow['template']."kdd"
+  end
+endfunction
+
+function! struct#openFile(workflowName, splitType, ...)
+  let locator = len(a:000) ? a:1 : ''
+  let workflow = g:struct_workflows[a:workflowName]
+  let path = s:path(workflow, locator)
+  let isNewFile = (! filereadable(path))
+  let isNewBuffer = s:openFile(a:splitType, path)
+  let datestr = system("date +'".g:workflow_template_date_format."'")
+  let b:date = strpart(datestr, 0, len(datestr) -1)
+  let b:title = s:parse_locator(workflow, locator).title
+  if (isNewFile && isNewBuffer)
+    call s:loadTemplate(workflow)
+    call s:makeSubstitutions()
+  end
+  call s:executeHooks(workflow, path, isNewFile)
+  call s:setAutocmds(workflow)
 endfunction
 
 function! s:makeExCommands(name)

@@ -94,9 +94,36 @@ Here's another example that I use:
 This sets up an autocmd which uses pandoc to regenerate an html version of the current file every
 time the file is saved.
 
+## Templates
+
+You can also define a template for a newly created workflow file. To do this, first create a
+template file like so:
+
+``` {.markdown}
+:date: {{{ b:date }}}
+:title: {{{ b:title }}}
+
+Content...
+```
+
+Sections enclosed with `{{{ ... }}}` will be evaluated as vimscript, with the variables b:title and
+b:date set to the (unsanitised) string used for the filename and the current date respectively. You
+can configure the format used for b:date using `g:workflow_template_date_format`, which will be
+passed to the system `date` command.
+
+Once you've created that template file you can use it in a workflow like this:
+
+```
+"Blog": {
+          'root': '~/Blog/posts',
+          'date': 1,
+          'ext': 'md',
+          'template': '~/Blog/template.md'
+        }
+```
+
 ## Upcoming features
 
 The following features aren't working yet, but will any luck I'll add them soon.
 
 - Autocompletion for ex commands
-- Templates
