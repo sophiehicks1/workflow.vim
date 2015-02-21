@@ -74,7 +74,6 @@ endfunction
 
 function! s:path(workflow, locator)
   let locator = s:parse_locator(a:workflow, a:locator)
-  echom string(locator)
   if s:has_mandatory_title(a:workflow) && !len(locator['title'])
     throw "Invalid file locator '" . a:locator . "'"
   endif
@@ -175,18 +174,22 @@ endfunction
 function! struct#openFile(workflowName, splitType, ...)
   let locator = len(a:000) ? a:1 : ''
   let workflow = g:struct_workflows[a:workflowName]
-  let path = s:path(workflow, locator)
-  let isNewFile = (! filereadable(path))
-  let isNewBuffer = s:openFile(a:splitType, path)
-  let datestr = system("date +'".g:workflow_template_date_format."'")
-  let b:date = strpart(datestr, 0, len(datestr) -1)
-  let b:title = s:parse_locator(workflow, locator).title
-  if (isNewFile && isNewBuffer)
-    call s:loadTemplate(workflow)
-    call s:makeSubstitutions()
-  end
-  call s:executeHooks(workflow, path, isNewFile)
-  call s:setAutocmds(workflow)
+  try
+    let path = s:path(workflow, locator)
+    let isNewFile = (! filereadable(path))
+    let isNewBuffer = s:openFile(a:splitType, path)
+    let datestr = system("date +'".g:workflow_template_date_format."'")
+    let b:date = strpart(datestr, 0, len(datestr) -1)
+    let b:title = s:parse_locator(workflow, locator).title
+    if (isNewFile && isNewBuffer)
+      call s:loadTemplate(workflow)
+      call s:makeSubstitutions()
+    end
+    call s:executeHooks(workflow, path, isNewFile)
+    call s:setAutocmds(workflow)
+  catch "Invalid file locator ''"
+    call s:echoError("Workflow '".a:workflowName."' requires a title")
+  endtry
 endfunction
 
 function! s:makeExCommands(name)
@@ -220,7 +223,7 @@ function! s:errorsForWorkflow(name)
 endfunction
 
 function! s:echoError(error)
-  echohl WarningMsg
+  echohl Error
   echom a:error
   echohl None
 endfunction
