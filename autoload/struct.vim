@@ -7,11 +7,10 @@ let g:did_autoload_struct = 1
 " - autocomplete for ex commands
 "   - 'title' should complete to '2014-12-01-title' when the workflow has
 "     dates
+"   - '2014-' should complete to '2014-12-01-title'
 "   - 'dir' should complete to 'directory/' when the workflow is nested
 "   - 'directory/' should complete to anything inside 'directory/' when the
 "     workfow is nested
-"   - 'filename' should complete to 'directory/filename' when the workflow is
-"     nested
 
 function! s:date()
   return substitute(system('date +%Y-%m-%d'), "\n", '', '')
@@ -73,6 +72,9 @@ function! s:parse_locator(workflow, locator)
 endfunction
 
 function! s:path(workflow, locator)
+  if s:has_mandatory_title(a:workflow) && !len(a:locator)
+    throw "Invalid file locator '" . a:locator . "'"
+  endif
   let locator = s:parse_locator(a:workflow, a:locator)
   if s:has_mandatory_title(a:workflow) && !len(locator['title'])
     throw "Invalid file locator '" . a:locator . "'"
@@ -171,6 +173,16 @@ function! s:loadTemplate(workflow)
   end
 endfunction
 
+function! s:applyTemplate(workflow, locator, isNew)
+  if (a:isNew)
+    let datestr = system("date +'".g:workflow_template_date_format."'")
+    let b:date = strpart(datestr, 0, len(datestr) -1)
+    let b:title = s:parse_locator(a:workflow, a:locator).title
+    call s:loadTemplate(a:workflow)
+    call s:makeSubstitutions()
+  end
+endfunction
+
 function! struct#openFile(workflowName, splitType, ...)
   let locator = len(a:000) ? a:1 : ''
   let workflow = g:struct_workflows[a:workflowName]
@@ -178,16 +190,10 @@ function! struct#openFile(workflowName, splitType, ...)
     let path = s:path(workflow, locator)
     let isNewFile = (! filereadable(path))
     let isNewBuffer = s:openFile(a:splitType, path)
-    let datestr = system("date +'".g:workflow_template_date_format."'")
-    let b:date = strpart(datestr, 0, len(datestr) -1)
-    let b:title = s:parse_locator(workflow, locator).title
-    if (isNewFile && isNewBuffer)
-      call s:loadTemplate(workflow)
-      call s:makeSubstitutions()
-    end
+    call s:applyTemplate(workflow, locator, (isNewFile && isNewBuffer))
     call s:executeHooks(workflow, path, isNewFile)
     call s:setAutocmds(workflow)
-  catch /Invalid file locator ''/
+  catch /Invalid file locator '.*/
     call s:echoError("Workflow '".a:workflowName."' requires a title")
   endtry
 endfunction
