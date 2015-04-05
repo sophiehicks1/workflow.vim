@@ -1,7 +1,7 @@
-if exists("g:did_autoload_struct")
-  finish
-endif
-let g:did_autoload_struct = 1
+" if exists("g:did_autoload_struct")
+"   finish
+" endif
+" let g:did_autoload_struct = 1
 
 " TODO
 " - autocomplete for ex commands
@@ -11,6 +11,21 @@ let g:did_autoload_struct = 1
 "   - 'dir' should complete to 'directory/' when the workflow is nested
 "   - 'directory/' should complete to anything inside 'directory/' when the
 "     workfow is nested
+"
+" Making this work for dated workflows is actually a pretty big change...
+" currently, there is no way to use one of the ex commands to open a file from
+" a previous date :(
+"
+" One possible solution is to allow the use of `--date=2015-01-01` (or something
+" similar) in workflow ex commands to overide the date.
+" - this would allow the construction of a locator string for any file in any
+"   workflow
+" - when parsing the title need to extract these things tidily (without
+"   leaving any double spaces)
+" - would have to support autocompleting of `--date=2015-` as well
+"
+"
+" Search
 
 function! s:date()
   return substitute(system('date +%Y-%m-%d'), "\n", '', '')
@@ -173,14 +188,23 @@ function! s:loadTemplate(workflow)
   end
 endfunction
 
-function! s:applyTemplate(workflow, locator, isNew)
-  if (a:isNew)
-    let datestr = system("date +'".g:workflow_template_date_format."'")
-    let b:date = strpart(datestr, 0, len(datestr) -1)
-    let b:title = s:parse_locator(a:workflow, a:locator).title
-    call s:loadTemplate(a:workflow)
-    call s:makeSubstitutions()
+function! s:applyTemplate(workflow, locator)
+  let datestr = system("date +'".g:workflow_template_date_format."'")
+  let b:date = strpart(datestr, 0, len(datestr) -1)
+  let b:title = s:parse_locator(a:workflow, a:locator).title
+  call s:loadTemplate(a:workflow)
+  call s:makeSubstitutions()
+endfunction
+
+function! s:openAndPostProcess(workflow, splitType, path, locator)
+  let path = fnamemodify(a:path, ':p')
+  let isNewFile = (! filereadable(path))
+  let isNewBuffer = s:openFile(a:splitType, path)
+  if (isNewFile && isNewBuffer)
+    call s:applyTemplate(a:workflow, a:locator)
   end
+  call s:executeHooks(a:workflow, path, isNewFile)
+  call s:setAutocmds(a:workflow)
 endfunction
 
 function! struct#openFile(workflowName, splitType, ...)
@@ -188,13 +212,65 @@ function! struct#openFile(workflowName, splitType, ...)
   let workflow = g:struct_workflows[a:workflowName]
   try
     let path = s:path(workflow, locator)
-    let isNewFile = (! filereadable(path))
-    let isNewBuffer = s:openFile(a:splitType, path)
-    call s:applyTemplate(workflow, locator, (isNewFile && isNewBuffer))
-    call s:executeHooks(workflow, path, isNewFile)
-    call s:setAutocmds(workflow)
+    call s:openAndPostProcess(workflow, a:splitType, path, locator)
   catch /Invalid file locator '.*/
     call s:echoError("Workflow '".a:workflowName."' requires a title")
+  endtry
+endfunction
+
+" " Return relative paths for all the files recursively under a:dir, excluding any dotfiles
+" function! s:allfiles(dir)
+"   let dir = fnamemodify(a:dir, ':p')
+"   let paths = split(system("find ".dir." -type d -not -name . -a -name '.*' -prune -o -not -name '.*' -type f -print"), "\n")
+"   return map(paths, "substitute(v:val, dir.'/', '', '')")
+" endfunction
+
+" function! struct#autocomplete(workflowName, str)
+"   let workflow = g:struct_workflows[a:workflowName]
+"   let root = workflow['root']
+"   let opts = []
+"   for fname in s:allfiles(root)
+"     if match(fname, a:str) != -1
+"       call add(opts, fname)
+"     end
+"   endfor
+"   return s:allfiles(root)
+" endfunction
+
+function! s:grep(workflow, query)
+  let directory = substitute(a:workflow['root'], '^\~', $HOME, '')
+  let resultstring = system('grep -r ' . shellescape(a:query) . ' ' . shellescape(directory))
+  let dirpattern = substitute(directory.'/', '/', '\\/', 'g')
+  let results = split(substitute(resultstring, dirpattern, '', 'g'), '\n')
+  return results
+endfunction
+
+function! s:chooseResult(results)
+  let ind = 1
+  for result in a:results
+    echom ind . ') ' . result
+    let ind = ind + 1
+  endfor
+  let choice = input('Choose result: ')
+  if (match(choice, '^\d\d*$') == -1 || choice >=# len(a:results))
+    throw "Invalid selection"
+  end
+  return a:results[choice - 1]
+endfunction
+
+function! struct#grep(workflowName, query, splitType)
+  try
+    let workflow = g:struct_workflows[a:workflowName]
+    let results = s:grep(workflow, a:query)
+    if (len(results) > 0)
+      let chosen = s:chooseResult(results)
+      let path = workflow['root'].'/'.substitute(chosen, ':.*$', '', '')
+      call s:openAndPostProcess(workflow, a:splitType, path, '')
+    else
+      echom "No " . a:workflowName . " results found for '" . a:query . "'"
+    end
+  catch /Invalid selection/
+    call s:echoError("Invalid selection")
   endtry
 endfunction
 
@@ -207,6 +283,10 @@ function! s:makeExCommands(name)
   execute 'command! -nargs=0 H'.a:name."List call struct#openDir('".a:name."', 'split')"
   execute 'command! -nargs=0 V'.a:name."List call struct#openDir('".a:name."', 'vert')"
   execute 'command! -nargs=0 T'.a:name."List call struct#openDir('".a:name."', 'tab')"
+  execute 'command! -nargs=? '.a:name."Grep call struct#grep('".a:name."', <f-args>, '')"
+  execute 'command! -nargs=? H'.a:name."Grep call struct#grep('".a:name."', <f-args>, 'split')"
+  execute 'command! -nargs=? V'.a:name."Grep call struct#grep('".a:name."', <f-args>, 'vert')"
+  execute 'command! -nargs=? T'.a:name."Grep call struct#grep('".a:name."', <f-args>, 'tab')"
 endfunction
 
 function! s:rootIsDirectory(workflow)

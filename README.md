@@ -41,16 +41,30 @@ with non-word chars removed and spaces replaced with dashes, so `:Blog This is a
 `~/blog/posts/2014-12-01-this-is-awesome.html` (assuming the command was executed on 1st December
 2014)
 
-That configuration will also create matching TBlog, SBlog and VBlog commands to open the file in a
+That configuration will also create matching TBlog, HBlog and VBlog commands to open the file in a
 new tab, split and vert split respectively.
 
 ## Managing lists of files
 
 In addition to the commands which open new files, each workflow defines 4 commands to open the root
 directory of that workflow. Using the above "Blog" example, these would be `:BlogList`,
-`:VBlogList`, `:TBlogList` and `:SBlogList`. When combined with tpopes vim-vinegar plugin, this
+`:VBlogList`, `:TBlogList` and `:HBlogList`. When combined with tpopes vim-vinegar plugin, this
 makes for a simple but effective way to manage and navigate the files you've already created using a
 particular workflow.
+
+Finally, each workflow also defines 4 commands to grep the contents of the existing files within the
+workflow's root directory. Again, taking the above "Blog" example these whould be `:BlogGrep`,
+`:VBlogGrep`, `:HBlogGrep` and `:TBlogGrep`. Behind the scenes, running this...
+
+```{.vim}
+:BlogGrep this is a search query
+```
+
+... would delegate to this grep command...
+
+```{.bash}
+grep -r 'this is a search query' '/Users/simon/blog/posts'
+```
 
 ## Running commands automatically on load/create
 
