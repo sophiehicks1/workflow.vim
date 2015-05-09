@@ -258,7 +258,7 @@ function! s:chooseResult(results)
   return a:results[choice - 1]
 endfunction
 
-function! struct#grep(workflowName, query, splitType)
+function! struct#grep(workflowName, splitType, query)
   try
     let workflow = g:struct_workflows[a:workflowName]
     let results = s:grep(workflow, a:query)
@@ -274,19 +274,20 @@ function! struct#grep(workflowName, query, splitType)
   endtry
 endfunction
 
+function! s:makeExVariants(name, command, function, withArgs)
+  let types = [['', ''], ['H', 'split'], ['V', 'vert'], ['T', 'tab']]
+  let nargs = a:withArgs ? '?' : '0'
+  for type in types
+    let command = type[0].a:name.a:command
+    let argList = "'".a:name."', '".type[1]."'".(a:withArgs ? ', <f-args>' : '')
+    execute 'command! -nargs='.nargs.' '.command.' call struct#'.a:function."(".argList.")"
+  endfor
+endfunction
+
 function! s:makeExCommands(name)
-  execute 'command! -nargs=? '.a:name." call struct#openFile('".a:name."', '', <f-args>)"
-  execute 'command! -nargs=? H'.a:name." call struct#openFile('".a:name."', 'split', <f-args>)"
-  execute 'command! -nargs=? V'.a:name." call struct#openFile('".a:name."', 'vert', <f-args>)"
-  execute 'command! -nargs=? T'.a:name." call struct#openFile('".a:name."', 'tab', <f-args>)"
-  execute 'command! -nargs=0 '.a:name."List call struct#openDir('".a:name."', '')"
-  execute 'command! -nargs=0 H'.a:name."List call struct#openDir('".a:name."', 'split')"
-  execute 'command! -nargs=0 V'.a:name."List call struct#openDir('".a:name."', 'vert')"
-  execute 'command! -nargs=0 T'.a:name."List call struct#openDir('".a:name."', 'tab')"
-  execute 'command! -nargs=? '.a:name."Grep call struct#grep('".a:name."', <f-args>, '')"
-  execute 'command! -nargs=? H'.a:name."Grep call struct#grep('".a:name."', <f-args>, 'split')"
-  execute 'command! -nargs=? V'.a:name."Grep call struct#grep('".a:name."', <f-args>, 'vert')"
-  execute 'command! -nargs=? T'.a:name."Grep call struct#grep('".a:name."', <f-args>, 'tab')"
+  call s:makeExVariants(a:name, '', 'openFile', 1)
+  call s:makeExVariants(a:name, 'List', 'openDir', 0)
+  call s:makeExVariants(a:name, 'Grep', 'grep', 1)
 endfunction
 
 function! s:rootIsDirectory(workflow)
