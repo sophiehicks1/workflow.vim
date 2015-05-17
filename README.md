@@ -136,6 +136,13 @@ Once you've created that template file you can use it in a workflow like this:
         }
 ```
 
+## Running hooks manually
+
+In addition to the above commands, for each workflow `:<workflow>LoadHooks` and
+`:<workflow>CreateHooks` are created. LoadHooks, will run all the "onload" hooks and set up all the
+autocommands as if the current file had been loaded as a `<workflow>` file. `:<workflow>CreateHooks`
+does the same, except it runs the "oncreate" hooks first.
+
 ## Upcoming features
 
 The following features aren't working yet, but will any luck I'll add them soon.

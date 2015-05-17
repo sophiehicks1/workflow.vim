@@ -218,6 +218,22 @@ function! struct#openFile(workflowName, splitType, ...)
   endtry
 endfunction
 
+" Unused args are so that this function follows the same arg pattern as the
+" other user exposed functions
+function! struct#loadHooks(workflowName, ...)
+  let workflow = g:struct_workflows[a:workflowName]
+  call s:executeHooks(workflow, expand("%"), 0)
+  call s:setAutocmds(workflow)
+endfunction
+
+" Unused args are so that this function follows the same arg pattern as the
+" other user exposed functions
+function! struct#createHooks(workflowName, ...)
+  let workflow = g:struct_workflows[a:workflowName]
+  call s:executeHooks(workflow, expand("%"), 1)
+  call s:setAutocmds(workflow)
+endfunction
+
 " " Return relative paths for all the files recursively under a:dir, excluding any dotfiles
 " function! s:allfiles(dir)
 "   let dir = fnamemodify(a:dir, ':p')
@@ -288,6 +304,8 @@ function! s:makeExCommands(name)
   call s:makeExVariants(a:name, '', 'openFile', 1)
   call s:makeExVariants(a:name, 'List', 'openDir', 0)
   call s:makeExVariants(a:name, 'Grep', 'grep', 1)
+  call s:makeExVariants(a:name, 'LoadHooks', 'loadHooks', 0)
+  call s:makeExVariants(a:name, 'CreateHooks', 'createHooks', 0)
 endfunction
 
 function! s:rootIsDirectory(workflow)
