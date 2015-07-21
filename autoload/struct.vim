@@ -1,31 +1,11 @@
-" if exists("g:did_autoload_struct")
-"   finish
-" endif
-" let g:did_autoload_struct = 1
+if exists("g:did_autoload_struct")
+  finish
+endif
+let g:did_autoload_struct = 1
 
 " TODO
-" - autocomplete for ex commands
-"   - 'title' should complete to '2014-12-01-title' when the workflow has
-"     dates
-"   - '2014-' should complete to '2014-12-01-title'
-"   - 'dir' should complete to 'directory/' when the workflow is nested
-"   - 'directory/' should complete to anything inside 'directory/' when the
-"     workfow is nested
-"
-" Making this work for dated workflows is actually a pretty big change...
-" currently, there is no way to use one of the ex commands to open a file from
-" a previous date :(
-"
-" One possible solution is to allow the use of `--date=2015-01-01` (or something
-" similar) in workflow ex commands to overide the date.
-" - this would allow the construction of a locator string for any file in any
-"   workflow
-" - when parsing the title need to extract these things tidily (without
-"   leaving any double spaces)
-" - would have to support autocompleting of `--date=2015-` as well
-"
-"
-" Search
+" <workflow>InsertPath
+" - make sure autocomplete works for nested workflows with a slash (eg. etrog/tech)
 
 function! s:date()
   return substitute(system('date +%Y-%m-%d'), "\n", '', '')
@@ -45,6 +25,10 @@ endfunction
 
 function! s:has_nested(workflow)
   return s:has_key(a:workflow, 'nested')
+endfunction
+
+function! s:has_insert_path(workflow)
+  return has_key(a:workflow, 'insertPath') && (type(a:workflow['insertPath']) ==# type({}))
 endfunction
 
 function! s:sanitize_title(title)
@@ -150,10 +134,25 @@ function! struct#openDir(workflowName, splitType)
   call s:openFile(a:splitType, root)
 endfunction
 
+function! s:addMappings(workflow, mapType)
+  if has_key(a:workflow, a:mapType)
+    let mappings = a:workflow[a:mapType]
+    for mapping in keys(mappings)
+      execute a:mapType . ' <buffer> ' . mapping . ' ' . mappings[mapping]
+    endfor
+  end
+endfunction
+
 function! s:executeHooks(workflow, path, isNewFile)
   if has_key(a:workflow, 'onload')
     execute substitute(a:workflow['onload'], '<[Ff][Ii][Ll][Ee]>', a:path, 'g')
   end
+  call s:addMappings(a:workflow, 'imap')
+  call s:addMappings(a:workflow, 'cmap')
+  call s:addMappings(a:workflow, 'nmap')
+  call s:addMappings(a:workflow, 'inoremap')
+  call s:addMappings(a:workflow, 'cnoremap')
+  call s:addMappings(a:workflow, 'nnoremap')
   if a:isNewFile && has_key(a:workflow, 'oncreate')
     execute substitute(a:workflow['oncreate'], '<[Ff][Ii][Ll][Ee]>', a:path, 'g')
   end
@@ -234,24 +233,31 @@ function! struct#createHooks(workflowName, ...)
   call s:setAutocmds(workflow)
 endfunction
 
-" " Return relative paths for all the files recursively under a:dir, excluding any dotfiles
-" function! s:allfiles(dir)
-"   let dir = fnamemodify(a:dir, ':p')
-"   let paths = split(system("find ".dir." -type d -not -name . -a -name '.*' -prune -o -not -name '.*' -type f -print"), "\n")
-"   return map(paths, "substitute(v:val, dir.'/', '', '')")
-" endfunction
+function! struct#matchingFiles(workflowName, pattern)
+  let workflow = g:struct_workflows[a:workflowName]
+  let dir = fnamemodify(workflow['root'], ':p')
+  let paths = split(system("find '".dir."' -name "."'*".a:pattern."*' -type f"), "\n")
+  return map(paths, "substitute(v:val, dir.'/', '', '')")
+endfunction
 
-" function! struct#autocomplete(workflowName, str)
-"   let workflow = g:struct_workflows[a:workflowName]
-"   let root = workflow['root']
-"   let opts = []
-"   for fname in s:allfiles(root)
-"     if match(fname, a:str) != -1
-"       call add(opts, fname)
-"     end
-"   endfor
-"   return s:allfiles(root)
-" endfunction
+function! struct#insertPathAutoComplete(argLead, cmdLine, cursorPos)
+  let workflowName = strpart(a:cmdLine, 0, match(a:cmdLine, 'InsertPath'))
+  return struct#matchingFiles(workflowName, a:argLead)
+endfunction
+
+function! struct#insertPath(workflowName, relativePath)
+  let workflow = g:struct_workflows[a:workflowName]
+  let absoluteDir = fnamemodify(workflow['root'], ':p')
+  let bak = @a
+  let filePath = fnamemodify(absoluteDir . a:relativePath, ':p')
+  if filereadable(filePath)
+    let @a = filePath
+    normal! "ap
+    let @a = bak
+  else
+    call s:echoError("Invalid path: ".a:relativePath)
+  endif
+endfunction
 
 function! s:grep(workflow, query)
   let directory = substitute(a:workflow['root'], '^\~', $HOME, '')
@@ -300,12 +306,25 @@ function! s:makeExVariants(name, command, function, withArgs)
   endfor
 endfunction
 
+function! s:setupInsertPath(name)
+  let workflow = g:struct_workflows[a:name]
+  if s:has_insert_path(workflow)
+    let commandName = a:name.'InsertPath'
+    execute 'command! -nargs=1 -complete=customlist,struct#insertPathAutoComplete '.commandName.' call struct#insertPath("'.a:name.'", <f-args>)'
+    let config = workflow['insertPath']
+    if has_key(config, 'globalImap')
+      execute 'inoremap ' . config['globalImap'] . ' <c-o>:'.commandName.' '
+    endif
+  endif
+endfunction
+
 function! s:makeExCommands(name)
   call s:makeExVariants(a:name, '', 'openFile', 1)
   call s:makeExVariants(a:name, 'List', 'openDir', 0)
   call s:makeExVariants(a:name, 'Grep', 'grep', 1)
   call s:makeExVariants(a:name, 'LoadHooks', 'loadHooks', 0)
   call s:makeExVariants(a:name, 'CreateHooks', 'createHooks', 0)
+  call s:setupInsertPath(a:name)
 endfunction
 
 function! s:rootIsDirectory(workflow)

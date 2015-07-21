@@ -1,3 +1,8 @@
+# TL;DR;
+
+workflow.vim is a highly customizable note taking plugin for structured note taking workflows. It's
+a little like a "Build your own Evernote" kit for vim.
+
 # workflow.vim
 
 I take lots of notes in vim for lots of different purposes and in lots of different ways. Over time
@@ -108,6 +113,27 @@ Here's another example that I use:
 This sets up an autocmd which uses pandoc to regenerate an html version of the current file every
 time the file is saved.
 
+## Setting up workflow specific mappings
+
+You can also set up workflow specific mappings, which are added as buffer local mappings at the same
+phase as any onload hooks. Here's a slightly contrived example.
+
+    "Journal": {
+                 'root': '~/journal/posts',
+                 'date': 1,
+                 'ext': 'md',
+                 'nmap': {
+                   '<C-w><C-c>': ':!wc -w %<CR>'
+                 },
+                 'autocmd': {
+                   'BufWritePost': 'call PandocPreview("~/Desktop/out.html")'
+                 }
+               }
+
+Hopefully this is pretty obvious. Whenever you open a file using the `:Journal` command, the
+resulting buffer will have a mapping in normal mode which counts the number of words in the file.
+This also works with 'imap', 'inoremap', 'nnoremap', 'cmap' and 'cnoremap'.
+
 ## Templates
 
 You can also define a template for a newly created workflow file. To do this, first create a
@@ -140,11 +166,55 @@ Once you've created that template file you can use it in a workflow like this:
 
 In addition to the above commands, for each workflow `:<workflow>LoadHooks` and
 `:<workflow>CreateHooks` are created. LoadHooks, will run all the "onload" hooks and set up all the
-autocommands as if the current file had been loaded as a `<workflow>` file. `:<workflow>CreateHooks`
-does the same, except it runs the "oncreate" hooks first.
+autocommands and mappings as if the current file had been loaded as a `<workflow>` file.
+`:<workflow>CreateHooks` does the same, except it runs the "oncreate" hooks first.
+
+## Rapidly inserting paths for workflow generated files
+
+Okay, I realise this is getting pretty esoteric at this point but stick with me! Some of my note
+taking workflows need to link to each other (for example I often include a link from one 'Note'
+workflow file to another, or from an item in my todo list to a 'Capture' or 'Note' workflow file so
+I can rapidly `gf` between them. Obviously you *could* use `<C-X><C-F>` to autocomplete using file
+paths, but that breaks the workflow abstraction which is kind of lame. So... workflow.vim has the
+option to add a `:<workflow>InsertPath' command. Here is another version of my "Capture" workflow
+(described above).
+
+```
+"Capture": {
+             'root': '~/Notes/capture',
+             'date': 1,
+             'ext': 'md',
+             'insertPath': {
+               'globalImap': '<c-i><c-f>',
+             },
+             'oncreate': "Todo process '<FILE>'"
+           }
+```
+ 
+This will add a `:CaptureInsertPath <relative-path>` command which converts the given relative path
+to an absolute path (so that it works with `gf`) and then append it after the cursor. The real value
+here is in the tab completion, which delegates to `find /path/to/capture/root -name '*query*`. In
+other words "foo" would tab complete to "2015-07-21-this-is-foo.md".
+
+By adding the `'globalImap'` key to the config object, I'm telling workflow.vim that I also want an
+insert mode mapping (which will be available throughout vim) to invoke this command. In other words
+adding that `'globalImap'` value is equivalent to having the following line in your .vimrc:
+
+```{.vim}
+inoremap <c-i><c-f> <C-o>:CaptureInsertPath<space>
+```
+
+That means, if you want to insert a link to `/Users/bob/Notes/capture/2015-07-21-this-is-foo.md`
+you could simply type `<C-i><C-f>foo<Tab><CR>` and carry on typing (i.e. you'd still be in insert
+mode after pressing enter.
+
+If you want the `:<workflow>InsertPath` command to be available, but don't want the global insert
+mode mapping then you should just leave the `'insertPath'` config object empty (i.e. `'insertPath':
+{}'`)
 
 ## Upcoming features
 
 The following features aren't working yet, but will any luck I'll add them soon.
 
-- Autocompletion for ex commands
+- `:<workflow>InsertPath` tab complete with nested workflows
+- Tab completion for other ex commands
