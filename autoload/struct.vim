@@ -245,6 +245,23 @@ function! struct#insertPathAutoComplete(argLead, cmdLine, cursorPos)
   return struct#matchingFiles(workflowName, a:argLead)
 endfunction
 
+function! s:matchWorkflow(string)
+  for workflow in keys(g:struct_workflows)
+    if match(a:string, ".*" . workflow) != -1
+      return workflow
+    endif
+  endfor
+  return -1
+endfunction
+
+" This only works for workflows which DO NOT automatically add a date (ie.
+" where workflow['date'] == 0)
+function! struct#openFileAutoComplete(argLead, cmdLine, cursorPos)
+  let workflowName =  s:matchWorkflow(strpart(a:cmdLine, 0, match(a:cmdLine, ' ')))
+  let paths = struct#matchingFiles(workflowName, a:argLead)
+  return map(paths, "substitute(v:val, '\.". g:struct_workflows[workflowName]['ext'] ."$', '', '')")
+endfunction
+
 function! struct#insertPath(workflowName, relativePath)
   let workflow = g:struct_workflows[a:workflowName]
   let absoluteDir = fnamemodify(workflow['root'], ':p')
@@ -302,7 +319,12 @@ function! s:makeExVariants(name, command, function, withArgs)
   for type in types
     let command = type[0].a:name.a:command
     let argList = "'".a:name."', '".type[1]."'".(a:withArgs ? ', <f-args>' : '')
-    execute 'command! -nargs='.nargs.' '.command.' call struct#'.a:function."(".argList.")"
+    if (s:has_date(g:struct_workflows[a:name]) == 0)
+      let complOpts = '-complete=customlist,struct#openFileAutoComplete '
+    else
+      let complOpts = ''
+    endif
+    execute 'command! -nargs='.nargs.' '.complOpts.command.' call struct#'.a:function."(".argList.")"
   endfor
 endfunction
 

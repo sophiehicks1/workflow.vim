@@ -49,6 +49,10 @@ with non-word chars removed and spaces replaced with dashes, so `:Blog This is a
 That configuration will also create matching TBlog, HBlog and VBlog commands to open the file in a
 new tab, split and vert split respectively.
 
+If the `'date'` parameter is set to 0, then you can autocomplete with these commands. This won't
+work with dated workflows though, since there's currently no way to prevent them from prepending
+today's date to the file.
+
 ## Managing lists of files
 
 In addition to the commands which open new files, each workflow defines 4 commands to open the root
