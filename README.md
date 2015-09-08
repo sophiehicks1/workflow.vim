@@ -171,11 +171,11 @@ Once you've created that template file you can use it in a workflow like this:
 In addition to the above commands, for each workflow `:<workflow>LoadHooks` and
 `:<workflow>CreateHooks` are created. LoadHooks, will run all the "onload" hooks and set up all the
 autocommands and mappings as if the current file had been loaded as a `<workflow>` file.
-`:<workflow>CreateHooks` does the same, except it runs the "oncreate" hooks first.
+`:<workflow>CreateHooks` does the same, except it runs the "oncreate" hooks too.
 
 ## Rapidly inserting paths for workflow generated files
 
-Okay, I realise this is getting pretty esoteric at this point but stick with me! Some of my note
+Okay, I realise this is getting pretty esoteric at this point but stick with me!! Some of my note
 taking workflows need to link to each other (for example I often include a link from one 'Note'
 workflow file to another, or from an item in my todo list to a 'Capture' or 'Note' workflow file so
 I can rapidly `gf` between them. Obviously you *could* use `<C-X><C-F>` to autocomplete using file
@@ -208,9 +208,9 @@ adding that `'globalImap'` value is equivalent to having the following line in y
 inoremap <c-i><c-f> <C-o>:CaptureInsertPath<space>
 ```
 
-That means, if you want to insert a link to `/Users/bob/Notes/capture/2015-07-21-this-is-foo.md`
+That means, if you want to insert a link to `/home/simon/Notes/capture/2015-07-21-this-is-foo.md`
 you could simply type `<C-i><C-f>foo<Tab><CR>` and carry on typing (i.e. you'd still be in insert
-mode after pressing enter.
+mode after pressing enter). 
 
 If you want the `:<workflow>InsertPath` command to be available, but don't want the global insert
 mode mapping then you should just leave the `'insertPath'` config object empty (i.e. `'insertPath':
@@ -220,5 +220,5 @@ mode mapping then you should just leave the `'insertPath'` config object empty (
 
 The following features aren't working yet, but will any luck I'll add them soon.
 
-- `:<workflow>InsertPath` tab complete with nested workflows
+- `:<workflow>InsertPath` tab complete with nested workflows. (This might work already, but I've not tested it thoroughly yet)
 - Tab completion for other ex commands
