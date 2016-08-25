@@ -262,17 +262,20 @@ function! struct#openFileAutoComplete(argLead, cmdLine, cursorPos)
   return map(paths, "substitute(v:val, '\.". g:struct_workflows[workflowName]['ext'] ."$', '', '')")
 endfunction
 
-function! struct#insertPath(workflowName, relativePath)
-  let workflow = g:struct_workflows[a:workflowName]
-  let absoluteDir = fnamemodify(workflow['root'], ':p')
+function! struct#insertPath(workflowName, path)
   let bak = @a
-  let filePath = fnamemodify(absoluteDir . a:relativePath, ':p')
+  let filePath = a:path
+  if match(filePath, "^/.*") == -1
+    let workflow = g:struct_workflows[a:workflowName]
+    let absoluteDir = fnamemodify(workflow['root'], ':p')
+    let filePath = fnamemodify(absoluteDir . filePath, ':p')
+  endif
   if filereadable(filePath)
     let @a = filePath
     normal! "ap
     let @a = bak
   else
-    call s:echoError("Invalid path: ".a:relativePath)
+    call s:echoError("Invalid path: ".a:path)
   endif
 endfunction
 
