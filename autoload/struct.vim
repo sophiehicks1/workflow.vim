@@ -237,7 +237,7 @@ function! struct#matchingFiles(workflowName, pattern)
   let workflow = g:struct_workflows[a:workflowName]
   let dir = fnamemodify(workflow['root'], ':p')
   let paths = split(system("find '".dir."' -name "."'*".a:pattern."*' -type f"), "\n")
-  return map(paths, "substitute(v:val, dir.'/', '', '')")
+  return map(paths, "substitute(v:val, '".dir."', '', '')")
 endfunction
 
 function! struct#insertPathAutoComplete(argLead, cmdLine, cursorPos)
