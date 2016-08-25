@@ -1,7 +1,7 @@
-if exists("g:did_autoload_struct")
-  finish
-endif
-let g:did_autoload_struct = 1
+" if exists("g:did_autoload_struct")
+"   finish
+" endif
+" let g:did_autoload_struct = 1
 
 " TODO
 " <workflow>InsertPath
@@ -236,7 +236,7 @@ endfunction
 function! struct#matchingFiles(workflowName, pattern)
   let workflow = g:struct_workflows[a:workflowName]
   let dir = fnamemodify(workflow['root'], ':p')
-  let paths = split(system("find '".dir."' -name "."'*".a:pattern."*' -type f"), "\n")
+  let paths = split(substitute(system("find '".dir."' -name "."'*".a:pattern."*' -type f"), "\/\/", "/", "g"), "\n")
   return map(paths, "substitute(v:val, '".dir."', '', '')")
 endfunction
 
