@@ -97,8 +97,7 @@ Let's say I go into a meeting with my colleague Tom, I would run `:Capture meeti
 opens a buffer containing a file called "2015-02-27-meeting-with-tom.md" which I use to take ad hoc
 notes during that meeting. Since this is a new buffer, it also runs `:Todo process
 /Users/simon/Notes/capture/2015-02-27-meeting-with-tom.md` which adds an item to my todo list to
-process the notes in that file (either by migrating the notes to a more permanent location or by
-actually taking action).
+take action on the notes in that file (the `:Todo` command is provided by [another plugin](https://github.com/simonhicks/todo.vim)).
 
 ## Setting workflow specific autocmds
 
