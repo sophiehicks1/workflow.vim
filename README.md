@@ -114,7 +114,7 @@ Here's another example that I use:
                }
 
 This sets up an autocmd which uses pandoc to regenerate an html version of the current file every
-time the file is saved.
+time the file is saved (the `PandocPreview()` function is defined in my `.vimrc`... not this plugin).
 
 ## Setting up workflow specific mappings
 
