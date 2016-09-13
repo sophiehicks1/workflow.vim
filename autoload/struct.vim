@@ -37,10 +37,10 @@ function! s:sanitize_title(title)
   return substitute(lower_case, '[^a-z0-9\-]', '', 'g')
 endfunction
 
-function! s:make_filename(workflow, title)
+function! s:make_filename(workflow, date, title)
   let name = ''
   if s:has_date(a:workflow)
-    let name = name . s:date()
+    let name = name . a:date
   endif
   let title = s:sanitize_title(a:title)
   if len(name) && len(title)
@@ -70,7 +70,7 @@ function! s:parse_locator(workflow, locator)
   return { "dir": dir, "title": parts[-1] }
 endfunction
 
-function! s:path(workflow, locator)
+function! s:path(workflow, date, locator)
   if s:has_mandatory_title(a:workflow) && !len(a:locator)
     throw "Invalid file locator '" . a:locator . "'"
   endif
@@ -78,7 +78,7 @@ function! s:path(workflow, locator)
   if s:has_mandatory_title(a:workflow) && !len(locator['title'])
     throw "Invalid file locator '" . a:locator . "'"
   endif
-  return fnamemodify(locator['dir'] .  s:make_filename(a:workflow, locator['title']), ':p')
+  return fnamemodify(locator['dir'] .  s:make_filename(a:workflow, a:date, locator['title']), ':p')
 endfunction
 
 function! s:splitType()
@@ -187,8 +187,8 @@ function! s:applyTemplate(workflow, locator)
   call s:makeSubstitutions()
 endfunction
 
-function! s:openAndPostProcess(workflow, path, locator)
-  let path = fnamemodify(a:path, ':p')
+function! s:openAndPostProcess(workflow, date, locator)
+  let path = fnamemodify(s:path(a:workflow, a:date, a:locator), ':p')
   let isNewFile = (! filereadable(path))
   let isNewBuffer = s:openFile(path)
   if (isNewFile && isNewBuffer)
@@ -202,8 +202,7 @@ function! struct#openFile(workflowName, ...)
   let locator = len(a:000) ? a:1 : ''
   let workflow = g:struct_workflows[a:workflowName]
   try
-    let path = s:path(workflow, locator)
-    call s:openAndPostProcess(workflow, path, locator)
+    call s:openAndPostProcess(workflow, s:date(), locator)
   catch /Invalid file locator '.*/
     call s:echoError("Workflow '".a:workflowName."' requires a title")
   endtry
