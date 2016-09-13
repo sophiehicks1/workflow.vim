@@ -1,7 +1,7 @@
-" if exists("g:did_autoload_struct")
-"   finish
-" endif
-" let g:did_autoload_struct = 1
+if exists("g:did_autoload_struct")
+  finish
+endif
+let g:did_autoload_struct = 1
 
 " TODO
 " <workflow>InsertPath
@@ -81,22 +81,18 @@ function! s:path(workflow, locator)
   return fnamemodify(locator['dir'] .  s:make_filename(a:workflow, locator['title']), ':p')
 endfunction
 
-function! s:safeSplitType(splitType)
-  if (a:splitType ==# '') && !&hidden && &modified
+function! s:splitType()
+  if !&hidden && &modified
     echom "Force setting splitType to 'split' to avoid losing unsaved changes"
     return 'split'
   else
-    return a:splitType
+    return ''
   endif
 endfunction
 
 function! s:newBufferCommand(splitType, path)
   if (a:splitType == 'split')
     return "new " . a:path
-  elseif (a:splitType == 'vert')
-    return "vert new " . a:path
-  elseif (a:splitType == 'tab')
-    return "tabnew " . a:path
   else
     return "edit " . a:path
   endif
@@ -105,18 +101,14 @@ endfunction
 function! s:existingBufferCommand(splitType, notesBufferNum)
   if (a:splitType == 'split')
     return "split +buffer" . a:notesBufferNum
-  elseif (a:splitType == 'vert')
-    return "vert split +buffer" . a:notesBufferNum
-  elseif (a:splitType == 'tab')
-    return "tab sb " . a:notesBufferNum
   else
     return "buffer " . a:notesBufferNum
   endif
 endfunction
 
 " return true if a new buffer was created
-function! s:openFile(splitType, path)
-  let splitType = s:safeSplitType(a:splitType)
+function! s:openFile(path)
+  let splitType = s:splitType()
   let existingBufferNum = bufnr(a:path)
   let isNewBuffer = (existingBufferNum ==# -1)
   if isNewBuffer
@@ -128,10 +120,10 @@ function! s:openFile(splitType, path)
   return isNewBuffer
 endfunction
 
-function! struct#openDir(workflowName, splitType)
+function! struct#openDir(workflowName)
   let workflow = g:struct_workflows[a:workflowName]
   let root = workflow['root']
-  call s:openFile(a:splitType, root)
+  call s:openFile(root)
 endfunction
 
 function! s:addMappings(workflow, mapType)
@@ -195,10 +187,10 @@ function! s:applyTemplate(workflow, locator)
   call s:makeSubstitutions()
 endfunction
 
-function! s:openAndPostProcess(workflow, splitType, path, locator)
+function! s:openAndPostProcess(workflow, path, locator)
   let path = fnamemodify(a:path, ':p')
   let isNewFile = (! filereadable(path))
-  let isNewBuffer = s:openFile(a:splitType, path)
+  let isNewBuffer = s:openFile(path)
   if (isNewFile && isNewBuffer)
     call s:applyTemplate(a:workflow, a:locator)
   end
@@ -206,12 +198,12 @@ function! s:openAndPostProcess(workflow, splitType, path, locator)
   call s:setAutocmds(a:workflow)
 endfunction
 
-function! struct#openFile(workflowName, splitType, ...)
+function! struct#openFile(workflowName, ...)
   let locator = len(a:000) ? a:1 : ''
   let workflow = g:struct_workflows[a:workflowName]
   try
     let path = s:path(workflow, locator)
-    call s:openAndPostProcess(workflow, a:splitType, path, locator)
+    call s:openAndPostProcess(workflow, path, locator)
   catch /Invalid file locator '.*/
     call s:echoError("Workflow '".a:workflowName."' requires a title")
   endtry
@@ -300,14 +292,14 @@ function! s:chooseResult(results)
   return a:results[choice - 1]
 endfunction
 
-function! struct#grep(workflowName, splitType, query)
+function! struct#grep(workflowName, query)
   try
     let workflow = g:struct_workflows[a:workflowName]
     let results = s:grep(workflow, a:query)
     if (len(results) > 0)
       let chosen = s:chooseResult(results)
       let path = workflow['root'].'/'.substitute(chosen, ':.*$', '', '')
-      call s:openAndPostProcess(workflow, a:splitType, path, '')
+      call s:openAndPostProcess(workflow, path, '')
     else
       echom "No " . a:workflowName . " results found for '" . a:query . "'"
     end
@@ -316,19 +308,16 @@ function! struct#grep(workflowName, splitType, query)
   endtry
 endfunction
 
-function! s:makeExVariants(name, command, function, withArgs)
-  let types = [['', ''], ['H', 'split'], ['V', 'vert'], ['T', 'tab']]
+function! s:makeExCommand(name, command, function, withArgs)
   let nargs = a:withArgs ? '?' : '0'
-  for type in types
-    let command = type[0].a:name.a:command
-    let argList = "'".a:name."', '".type[1]."'".(a:withArgs ? ', <f-args>' : '')
-    if (s:has_date(g:struct_workflows[a:name]) == 0)
-      let complOpts = '-complete=customlist,struct#openFileAutoComplete '
-    else
-      let complOpts = ''
-    endif
-    execute 'command! -nargs='.nargs.' '.complOpts.command.' call struct#'.a:function."(".argList.")"
-  endfor
+  let command = a:name.a:command
+  let argList = "'".a:name."'".(a:withArgs ? ', <f-args>' : '')
+  if (s:has_date(g:struct_workflows[a:name]) == 0)
+    let complOpts = '-complete=customlist,struct#openFileAutoComplete '
+  else
+    let complOpts = ''
+  endif
+  execute 'command! -nargs='.nargs.' '.complOpts.command.' call struct#'.a:function."(".argList.")"
 endfunction
 
 function! s:setupInsertPath(name)
@@ -344,11 +333,11 @@ function! s:setupInsertPath(name)
 endfunction
 
 function! s:makeExCommands(name)
-  call s:makeExVariants(a:name, '', 'openFile', 1)
-  call s:makeExVariants(a:name, 'List', 'openDir', 0)
-  call s:makeExVariants(a:name, 'Grep', 'grep', 1)
-  call s:makeExVariants(a:name, 'LoadHooks', 'loadHooks', 0)
-  call s:makeExVariants(a:name, 'CreateHooks', 'createHooks', 0)
+  call s:makeExCommand(a:name, '', 'openFile', 1)
+  call s:makeExCommand(a:name, 'List', 'openDir', 0)
+  call s:makeExCommand(a:name, 'Grep', 'grep', 1)
+  call s:makeExCommand(a:name, 'LoadHooks', 'loadHooks', 0)
+  call s:makeExCommand(a:name, 'CreateHooks', 'createHooks', 0)
   call s:setupInsertPath(a:name)
 endfunction
 

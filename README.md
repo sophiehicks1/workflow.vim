@@ -46,30 +46,26 @@ with non-word chars removed and spaces replaced with dashes, so `:Blog This is a
 `~/blog/posts/2014-12-01-this-is-awesome.html` (assuming the command was executed on 1st December
 2014)
 
-That configuration will also create matching TBlog, HBlog and VBlog commands to open the file in a
-new tab, split and vert split respectively.
-
 If the `'date'` parameter is set to 0, then you can autocomplete with these commands. This won't
 work with dated workflows though, since there's currently no way to prevent them from prepending
 today's date to the file.
 
 ## Managing lists of files
 
-In addition to the commands which open new files, each workflow defines 4 commands to open the root
-directory of that workflow. Using the above "Blog" example, these would be `:BlogList`,
-`:VBlogList`, `:TBlogList` and `:HBlogList`. When combined with tpopes vim-vinegar plugin, this
-makes for a simple but effective way to manage and navigate the files you've already created using a
-particular workflow.
+In addition to the commands which open new files, each workflow defines a command to open the root
+directory of that workflow. Using the above "Blog" example, that would be `:BlogList`. When combined
+with tpopes vim-vinegar plugin, this makes for a simple but effective way to manage and navigate the
+files you've already created using a particular workflow.
 
-Finally, each workflow also defines 4 commands to grep the contents of the existing files within the
-workflow's root directory. Again, taking the above "Blog" example these whould be `:BlogGrep`,
-`:VBlogGrep`, `:HBlogGrep` and `:TBlogGrep`. Behind the scenes, running this...
+Finally, each workflow also defines a command to grep the contents of the existing files within the
+workflow's root directory. Again, taking the above "Blog" example that whould be `:BlogGrep`. Behind
+the scenes, running this...
 
 ```{.vim}
 :BlogGrep this is a search query
 ```
 
-... would delegate to this grep command...
+... would delegate to this grep command ...
 
 ```{.bash}
 grep -r 'this is a search query' '/Users/simon/blog/posts'
@@ -96,9 +92,9 @@ An example of this is the following workflow that I actually use.
 Let's say I go into a meeting with my colleague Tom, I would run `:Capture meeting with tom`. This
 opens a buffer containing a file called "2015-02-27-meeting-with-tom.md" which I use to take ad hoc
 notes during that meeting. Since this is a new buffer, it also runs `:Todo process
-/Users/simon/Notes/capture/2015-02-27-meeting-with-tom.md` which adds an item to my todo list to
-process the notes in that file (either by migrating the notes to a more permanent location or by
-actually taking action).
+/Users/simon/Notes/capture/2015-02-27-meeting-with-tom.md` which uses [another
+plugin](https://github.com/simonhicks/todo.vim) to add an item to my todo list to process the notes
+in that file.
 
 ## Setting workflow specific autocmds
 
