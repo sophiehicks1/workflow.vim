@@ -187,15 +187,19 @@ function! s:applyTemplate(workflow, locator)
   call s:makeSubstitutions()
 endfunction
 
-function! s:openAndPostProcess(workflow, date, locator)
-  let path = fnamemodify(s:path(a:workflow, a:date, a:locator), ':p')
-  let isNewFile = (! filereadable(path))
-  let isNewBuffer = s:openFile(path)
+function! s:openAndPostProcessPath(workflow, path, locator)
+  let isNewFile = (! filereadable(a:path))
+  let isNewBuffer = s:openFile(a:path)
   if (isNewFile && isNewBuffer)
     call s:applyTemplate(a:workflow, a:locator)
   end
-  call s:executeHooks(a:workflow, path, isNewFile)
+  call s:executeHooks(a:workflow, a:path, isNewFile)
   call s:setAutocmds(a:workflow)
+endfunction
+
+function! s:openAndPostProcess(workflow, date, locator)
+  let path = fnamemodify(s:path(a:workflow, a:date, a:locator), ':p')
+  return s:openAndPostProcessPath(a:workflow, path, a:locator)
 endfunction
 
 function! struct#openFile(workflowName, ...)
@@ -285,7 +289,7 @@ function! s:chooseResult(results)
     let ind = ind + 1
   endfor
   let choice = input('Choose result: ')
-  if (match(choice, '^\d\d*$') == -1 || choice >=# len(a:results))
+  if (match(choice, '^\d\d*$') == -1 || choice ># len(a:results))
     throw "Invalid selection"
   end
   return a:results[choice - 1]
@@ -298,7 +302,7 @@ function! struct#grep(workflowName, query)
     if (len(results) > 0)
       let chosen = s:chooseResult(results)
       let path = workflow['root'].'/'.substitute(chosen, ':.*$', '', '')
-      call s:openAndPostProcess(workflow, path, '')
+      call s:openAndPostProcessPath(workflow, path, '')
     else
       echom "No " . a:workflowName . " results found for '" . a:query . "'"
     end
