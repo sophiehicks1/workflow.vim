@@ -274,41 +274,9 @@ function! struct#insertPath(workflowName, path)
   endif
 endfunction
 
-function! s:grep(workflow, query)
-  let directory = substitute(a:workflow['root'], '^\~', $HOME, '')
-  let resultstring = system('grep -r ' . shellescape(a:query) . ' ' . shellescape(directory))
-  let dirpattern = substitute(directory.'/', '/', '\\/', 'g')
-  let results = split(substitute(resultstring, dirpattern, '', 'g'), '\n')
-  return results
-endfunction
-
-function! s:chooseResult(results)
-  let ind = 1
-  for result in a:results
-    echom ind . ') ' . result
-    let ind = ind + 1
-  endfor
-  let choice = input('Choose result: ')
-  if (match(choice, '^\d\d*$') == -1 || choice ># len(a:results))
-    throw "Invalid selection"
-  end
-  return a:results[choice - 1]
-endfunction
-
 function! struct#grep(workflowName, query)
-  try
-    let workflow = g:struct_workflows[a:workflowName]
-    let results = s:grep(workflow, a:query)
-    if (len(results) > 0)
-      let chosen = s:chooseResult(results)
-      let path = workflow['root'].'/'.substitute(chosen, ':.*$', '', '')
-      call s:openAndPostProcessPath(workflow, path, '')
-    else
-      echom "No " . a:workflowName . " results found for '" . a:query . "'"
-    end
-  catch /Invalid selection/
-    call s:echoError("Invalid selection")
-  endtry
+  let workflow = g:struct_workflows[a:workflowName]
+  execute "grep -ri '" . a:query . "' " . workflow['root']
 endfunction
 
 function! s:makeExCommand(name, command, function, withArgs)

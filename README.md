@@ -58,8 +58,8 @@ with tpopes vim-vinegar plugin, this makes for a simple but effective way to man
 files you've already created using a particular workflow.
 
 Finally, each workflow also defines a command to grep the contents of the existing files within the
-workflow's root directory. Again, taking the above "Blog" example that whould be `:BlogGrep`. Behind
-the scenes, running this...
+workflow's root directory, loading the results into the quickfix list. Again, taking the above
+"Blog" example that whould be `:BlogGrep`. Behind the scenes, running this...
 
 ```{.vim}
 :BlogGrep this is a search query
