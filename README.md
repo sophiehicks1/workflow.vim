@@ -212,9 +212,8 @@ If you want the `:<workflow>InsertPath` command to be available, but don't want 
 mode mapping then you should just leave the `'insertPath'` config object empty (i.e. `'insertPath':
 {}'`)
 
-## Upcoming features
+## KNOWN ISSUES
 
-The following features aren't working yet, but will any luck I'll add them soon.
-
-- `:<workflow>InsertPath` tab complete with nested workflows. (This might work already, but I've not tested it thoroughly yet)
-- Tab completion for other ex commands
+Several bits of this don't work on windows (I've had issues with dates, templates and grep so far,
+but there may be more issues). If someone tells me they want to use those features on windows,
+I can probably fix them... so let me know.
