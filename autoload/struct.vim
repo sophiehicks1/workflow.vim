@@ -228,10 +228,23 @@ function! struct#createHooks(workflowName, ...)
   call s:setAutocmds(workflow)
 endfunction
 
+function! s:is_windows()
+  if !exists("g:struct_is_windows")
+    let g:struct_is_windows = (match(exepath("find"), "\c.*\.exe$") != -1)
+  endif
+  return g:struct_is_windows
+endfunction
+
 function! struct#matchingFiles(workflowName, pattern)
   let workflow = g:struct_workflows[a:workflowName]
   let dir = fnamemodify(workflow['root'], ':p')
-  let paths = split(substitute(system("find '".dir."' -name "."'*".a:pattern."*' -type f"), "\/\/", "/", "g"), "\n")
+  let paths_out = ""
+  if s:is_windows()
+    let paths_out = system('dir "'.dir.'\*'.a:pattern.'* /b/s')
+  else
+    let paths_out = system("find '".dir."' -name "."'*".a:pattern."*' -type f")
+  endif
+  let paths = split(substitute(paths_out, "\/\/", "/", "g"), "\n")
   return map(paths, "substitute(v:val, '".dir."', '', '')")
 endfunction
 
