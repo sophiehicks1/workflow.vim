@@ -326,7 +326,7 @@ function! s:makeExCommands(name)
 endfunction
 
 function! s:rootDoesNotExist(workflow)
-  return glob(a:workflow['root']) == ''
+  return glob(fnamemodify(a:workflow['root'], ':p')) == ''
 endfunction
 
 function! s:rootIsNotADirectory(workflow)
@@ -343,7 +343,7 @@ function! s:validateWorkflow(name)
     call add(errors, "does not contain the mandatory 'root' key")
   endif
   if s:rootDoesNotExist(workflow)
-    call mkdir(root['workflow'], 'p')
+    call mkdir(fnamemodify(workflow['root'], ':p'), 'p')
   endif
   if s:rootIsNotADirectory(workflow)
     call add(errors, "root directory '" . workflow['root'] . "'is not a directory")
