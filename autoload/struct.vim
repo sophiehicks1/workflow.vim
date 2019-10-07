@@ -326,7 +326,7 @@ function! s:makeExCommands(name)
 endfunction
 
 function! s:rootDoesNotExist(workflow)
-  return glob(workflow['root']) == ''
+  return glob(a:workflow['root']) == ''
 endfunction
 
 function! s:rootIsNotADirectory(workflow)
