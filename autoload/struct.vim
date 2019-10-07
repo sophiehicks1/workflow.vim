@@ -325,11 +325,15 @@ function! s:makeExCommands(name)
   call s:setupInsertPath(a:name)
 endfunction
 
-function! s:rootIsDirectory(workflow)
-  return isdirectory(fnamemodify(a:workflow['root'], ":p"))
+function! s:rootDoesNotExist(workflow)
+  return glob(workflow['root']) == ''
 endfunction
 
-function! s:errorsForWorkflow(name)
+function! s:rootIsNotADirectory(workflow)
+  return !isdirectory(fnamemodify(a:workflow['root'], ":p"))
+endfunction
+
+function! s:validateWorkflow(name)
   let workflow = g:struct_workflows[a:name]
   let errors = []
   if !has_key(workflow, 'ext')
@@ -338,8 +342,11 @@ function! s:errorsForWorkflow(name)
   if !has_key(workflow, 'root')
     call add(errors, "does not contain the mandatory 'root' key")
   endif
-  if !s:rootIsDirectory(workflow)
-    call add(errors, "root directory '".workflow['root']."' does not exist")
+  if s:rootDoesNotExist(workflow)
+    call mkdir(root['workflow'], 'p')
+  endif
+  if s:rootIsNotADirectory(workflow)
+    call add(errors, "root directory '" . workflow['root'] . "'is not a directory")
   endif
   return errors
 endfunction
@@ -351,7 +358,7 @@ function! s:echoError(error)
 endfunction
 
 function! s:initializeWorkflow(name)
-  let errors = s:errorsForWorkflow(a:name)
+  let errors = s:validateWorkflow(a:name)
   if len(errors) > 0
     for error in errors
       call s:echoError("Invalid workflow '".a:name."' - ".error)
