@@ -29,7 +29,7 @@ as simple as configuring a few variables.
 
 For example this configuration...
 
-``` {.vim}
+```{.vim}
 let g:struct_workflows = {
       \"Blog":    {
       \             'root': '~/blog/posts',
@@ -49,6 +49,26 @@ with non-word chars removed and spaces replaced with dashes, so `:Blog This is a
 If the `'date'` parameter is set to 0, then you can autocomplete with these commands. This won't
 work with dated workflows though, since there's currently no way to prevent them from prepending
 today's date to the file.
+
+## Periodic files
+
+Here's another real example of a workflow that I use for planning my upcoming week:
+
+```{.vim}
+      \ "Plan": {
+      \   'root': '~/Weekly/plans',
+      \   'date': 1,
+      \   'period': 'weekly',
+      \   'ext': 'md'
+      \ },
+```
+
+Adding the `'period': 'weekly'` parameter means that this file is only updated weekly. In other
+words whenever you run this workflow, it will normalize the date the Monday from that week, so that
+you can run the `:Plan` command any time during the week and still get the same file.
+
+Supported options are `'daily'`, `'weekly'` and `'monthly'`. Setting `'period': 'daily'` is the same
+as not setting a period at all.
 
 ## Managing lists of files
 
