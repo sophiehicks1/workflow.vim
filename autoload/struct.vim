@@ -28,7 +28,7 @@ function! s:has_insert_path(workflow)
 endfunction
 
 function! s:periodicity(workflow)
-  return s:has_key(a:workflow, 'period') ? a:workflow['period'] : 'daily'
+  return has_key(a:workflow, 'period') ? a:workflow['period'] : 'daily'
 endfunction
 
 function! s:sanitize_title(title)
@@ -41,7 +41,7 @@ function! s:daily_date()
   return strftime('%Y-%m-%d')
 endfunction
 
-function! struct#weekly_date()
+function! s:weekly_date()
   let t = localtime()
   let adj_days = strftime('%w', t) - 1
   let adj_seconds = adj_days * 24 * 3600
