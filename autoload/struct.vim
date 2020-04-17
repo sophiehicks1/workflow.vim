@@ -255,7 +255,7 @@ endfunction
 
 function! s:matchWorkflow(string)
   for workflow in keys(g:struct_workflows)
-    if match(a:string, ".*" . workflow) != -1
+    if match(a:string, '^' . workflow) != -1
       return workflow
     endif
   endfor
