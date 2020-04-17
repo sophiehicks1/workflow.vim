@@ -7,10 +7,6 @@ let g:did_autoload_struct = 1
 " <workflow>InsertPath
 " - make sure autocomplete works for nested workflows with a slash (eg. etrog/tech)
 
-function! s:date()
-  return substitute(system('date +%Y-%m-%d'), "\n", '', '')
-endfunction
-
 function! s:has_key(workflow, key)
   return has_key(a:workflow, a:key) && a:workflow[a:key]
 endfunction
@@ -31,16 +27,46 @@ function! s:has_insert_path(workflow)
   return has_key(a:workflow, 'insertPath') && (type(a:workflow['insertPath']) ==# type({}))
 endfunction
 
+function! s:periodicity(workflow)
+  return has_key(a:workflow, 'period') ? a:workflow['period'] : 'daily'
+endfunction
+
 function! s:sanitize_title(title)
   let without_spaces = substitute(a:title, '[[:space:]][[:space:]]*', '-', 'g')
   let lower_case = tolower(without_spaces)
   return substitute(lower_case, '[^a-z0-9\-]', '', 'g')
 endfunction
 
+function! s:daily_date()
+  return strftime('%Y-%m-%d')
+endfunction
+
+function! s:weekly_date()
+  let t = localtime()
+  let adj_days = strftime('%w', t) - 1
+  let adj_seconds = adj_days * 24 * 3600
+  return strftime('%Y-%m-%d', t - adj_seconds)
+endfunction
+
+function! s:monthly_date()
+  return strftime('%Y-%m-01', localtime())
+endfunction
+
+function! s:workflow_date(workflow)
+  let l:period = s:periodicity(a:workflow)
+  if l:period == 'daily'
+    return s:daily_date()
+  elseif l:period == 'weekly'
+    return s:weekly_date()
+  elseif l:period == 'monthly'
+    return s:monthly_date()
+  end
+endfunction
+
 function! s:make_filename(workflow, title)
   let name = ''
   if s:has_date(a:workflow)
-    let name = name . s:date()
+    let name = name . s:workflow_date(a:workflow)
   endif
   let title = s:sanitize_title(a:title)
   if len(name) && len(title)
@@ -325,11 +351,15 @@ function! s:makeExCommands(name)
   call s:setupInsertPath(a:name)
 endfunction
 
-function! s:rootIsDirectory(workflow)
-  return isdirectory(fnamemodify(a:workflow['root'], ":p"))
+function! s:rootDoesNotExist(workflow)
+  return glob(fnamemodify(a:workflow['root'], ':p')) == ''
 endfunction
 
-function! s:errorsForWorkflow(name)
+function! s:rootIsNotADirectory(workflow)
+  return !isdirectory(fnamemodify(a:workflow['root'], ":p"))
+endfunction
+
+function! s:validateWorkflow(name)
   let workflow = g:struct_workflows[a:name]
   let errors = []
   if !has_key(workflow, 'ext')
@@ -338,8 +368,11 @@ function! s:errorsForWorkflow(name)
   if !has_key(workflow, 'root')
     call add(errors, "does not contain the mandatory 'root' key")
   endif
-  if !s:rootIsDirectory(workflow)
-    call add(errors, "root directory '".workflow['root']."' does not exist")
+  if s:rootDoesNotExist(workflow)
+    call mkdir(fnamemodify(workflow['root'], ':p'), 'p')
+  endif
+  if s:rootIsNotADirectory(workflow)
+    call add(errors, "root directory '" . workflow['root'] . "'is not a directory")
   endif
   return errors
 endfunction
@@ -351,7 +384,7 @@ function! s:echoError(error)
 endfunction
 
 function! s:initializeWorkflow(name)
-  let errors = s:errorsForWorkflow(a:name)
+  let errors = s:validateWorkflow(a:name)
   if len(errors) > 0
     for error in errors
       call s:echoError("Invalid workflow '".a:name."' - ".error)
