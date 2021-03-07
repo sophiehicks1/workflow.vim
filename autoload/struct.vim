@@ -171,6 +171,7 @@ function! s:executeHooks(workflow, path, isNewFile)
   call s:addMappings(a:workflow, 'inoremap')
   call s:addMappings(a:workflow, 'cnoremap')
   call s:addMappings(a:workflow, 'nnoremap')
+  call s:addMappings(a:workflow, 'iabbrev')
   if a:isNewFile && has_key(a:workflow, 'oncreate')
     execute substitute(a:workflow['oncreate'], '<[Ff][Ii][Ll][Ee]>', a:path, 'g')
   end

@@ -152,7 +152,7 @@ phase as any onload hooks. Here's a slightly contrived example.
 
 Hopefully this is pretty obvious. Whenever you open a file using the `:Journal` command, the
 resulting buffer will have a mapping in normal mode which counts the number of words in the file.
-This also works with 'imap', 'inoremap', 'nnoremap', 'cmap' and 'cnoremap'.
+This also works with 'imap', 'inoremap', 'nnoremap', 'cmap', 'cnoremap' and 'iabbrev'.
 
 ## Templates
 
