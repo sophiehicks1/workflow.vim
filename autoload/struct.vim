@@ -3,10 +3,6 @@ if exists("g:did_autoload_struct")
 endif
 let g:did_autoload_struct = 1
 
-" TODO
-" <workflow>InsertPath
-" - make sure autocomplete works for nested workflows with a slash (eg. etrog/tech)
-
 function! s:has_key(workflow, key)
   return has_key(a:workflow, a:key) && a:workflow[a:key]
 endfunction
@@ -323,7 +319,7 @@ function! s:makeExCommand(name, command, function, withArgs)
   let nargs = a:withArgs ? '?' : '0'
   let command = a:name.a:command
   let argList = "'".a:name."'".(a:withArgs ? ', <f-args>' : '')
-  if (s:has_date(g:struct_workflows[a:name]) == 0)
+  if (a:withArgs && s:has_date(g:struct_workflows[a:name]) == 0)
     let complOpts = '-complete=customlist,struct#openFileAutoComplete '
   else
     let complOpts = ''
