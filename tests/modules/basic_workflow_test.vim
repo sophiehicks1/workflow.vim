@@ -47,11 +47,11 @@ endfunction
 
 " Test filename generation
 function! TestFilenameGeneration()
-  call CreateTestWorkflow('TestNotes', {
-        \ 'root': g:test_workspace . '/notes',
-        \ 'ext': 'txt',
-        \ 'date': 1
-        \ })
+  let config = {}
+  let config['root'] = g:test_workspace . '/notes'
+  let config['ext'] = 'txt' 
+  let config['date'] = 1
+  call CreateTestWorkflow('TestNotes', config)
   
   " Mock the current date to get predictable results
   " We'll test the sanitize_title function indirectly by checking file creation
@@ -68,11 +68,11 @@ endfunction
 function! TestDirectoryCreation()
   let test_dir = g:test_workspace . '/test_creation'
   
-  call CreateTestWorkflow('TestCreation', {
-        \ 'root': test_dir,
-        \ 'ext': 'md',
-        \ 'date': 0
-        \ })
+  let config = {}
+  let config['root'] = test_dir
+  let config['ext'] = 'md'
+  let config['date'] = 0
+  call CreateTestWorkflow('TestCreation', config)
   
   " Directory should be created automatically
   call AssertDirExists(test_dir, 'Workflow root directory should be created')
@@ -80,11 +80,11 @@ endfunction
 
 " Test workflow without date
 function! TestWorkflowWithoutDate()
-  call CreateTestWorkflow('TestSimple', {
-        \ 'root': g:test_workspace . '/simple',
-        \ 'ext': 'txt',
-        \ 'date': 0
-        \ })
+  let config = {}
+  let config['root'] = g:test_workspace . '/simple'
+  let config['ext'] = 'txt'
+  let config['date'] = 0
+  call CreateTestWorkflow('TestSimple', config)
   
   let workflow = g:struct_workflows['TestSimple']
   call AssertEqual(0, workflow['date'], 'Date should be disabled')
@@ -93,12 +93,12 @@ endfunction
 
 " Test nested workflow configuration
 function! TestNestedWorkflow()
-  call CreateTestWorkflow('TestNested', {
-        \ 'root': g:test_workspace . '/nested',
-        \ 'ext': 'md', 
-        \ 'nested': 1,
-        \ 'date': 0
-        \ })
+  let config = {}
+  let config['root'] = g:test_workspace . '/nested'
+  let config['ext'] = 'md'
+  let config['nested'] = 1
+  let config['date'] = 0
+  call CreateTestWorkflow('TestNested', config)
   
   let workflow = g:struct_workflows['TestNested']
   call AssertEqual(1, workflow['nested'], 'Nested should be enabled')
@@ -110,13 +110,13 @@ function! TestWorkflowWithTemplate()
   let template_path = g:test_workspace . '/template.md'
   call CreateTestFile(template_path, "Title: {{{ b:title }}}\nDate: {{{ b:date }}}\n\nContent here...")
   
-  call CreateTestWorkflow('TestTemplate', {
-        \ 'root': g:test_workspace . '/templated',
-        \ 'ext': 'md',
-        \ 'template': template_path,
-        \ 'date': 1,
-        \ 'mandatory-title': 1
-        \ })
+  let config = {}
+  let config['root'] = g:test_workspace . '/templated'
+  let config['ext'] = 'md'
+  let config['template'] = template_path
+  let config['date'] = 1
+  let config['mandatory-title'] = 1
+  call CreateTestWorkflow('TestTemplate', config)
   
   let workflow = g:struct_workflows['TestTemplate']
   call AssertEqual(template_path, workflow['template'], 'Template path should match')
@@ -126,28 +126,28 @@ endfunction
 " Test period configurations
 function! TestPeriodicWorkflows()
   " Test daily workflow (default)
-  call CreateTestWorkflow('TestDaily', {
-        \ 'root': g:test_workspace . '/daily',
-        \ 'ext': 'md',
-        \ 'date': 1,
-        \ 'period': 'daily'
-        \ })
+  let daily_config = {}
+  let daily_config['root'] = g:test_workspace . '/daily'
+  let daily_config['ext'] = 'md'
+  let daily_config['date'] = 1
+  let daily_config['period'] = 'daily'
+  call CreateTestWorkflow('TestDaily', daily_config)
   
   " Test weekly workflow
-  call CreateTestWorkflow('TestWeekly', {
-        \ 'root': g:test_workspace . '/weekly',
-        \ 'ext': 'md',
-        \ 'date': 1,
-        \ 'period': 'weekly'
-        \ })
+  let weekly_config = {}
+  let weekly_config['root'] = g:test_workspace . '/weekly'
+  let weekly_config['ext'] = 'md'
+  let weekly_config['date'] = 1
+  let weekly_config['period'] = 'weekly'
+  call CreateTestWorkflow('TestWeekly', weekly_config)
   
   " Test monthly workflow
-  call CreateTestWorkflow('TestMonthly', {
-        \ 'root': g:test_workspace . '/monthly',
-        \ 'ext': 'md',
-        \ 'date': 1,
-        \ 'period': 'monthly'
-        \ })
+  let monthly_config = {}
+  let monthly_config['root'] = g:test_workspace . '/monthly'
+  let monthly_config['ext'] = 'md'
+  let monthly_config['date'] = 1
+  let monthly_config['period'] = 'monthly'
+  call CreateTestWorkflow('TestMonthly', monthly_config)
   
   let daily = g:struct_workflows['TestDaily']
   let weekly = g:struct_workflows['TestWeekly']
@@ -160,11 +160,11 @@ endfunction
 
 " Test workflow initialization creates commands
 function! TestWorkflowCommandCreation()
-  call CreateTestWorkflow('TestCommands', {
-        \ 'root': g:test_workspace . '/commands',
-        \ 'ext': 'txt',
-        \ 'date': 0
-        \ })
+  let config = {}
+  let config['root'] = g:test_workspace . '/commands'
+  let config['ext'] = 'txt'
+  let config['date'] = 0
+  call CreateTestWorkflow('TestCommands', config)
   
   " After initialization, commands should exist
   " We can't easily test command existence in vim script, but we can verify
@@ -174,17 +174,17 @@ endfunction
 
 " Test multiple workflows
 function! TestMultipleWorkflows()
-  call CreateTestWorkflow('Blog', {
-        \ 'root': g:test_workspace . '/blog',
-        \ 'ext': 'md',
-        \ 'date': 1
-        \ })
+  let blog_config = {}
+  let blog_config['root'] = g:test_workspace . '/blog'
+  let blog_config['ext'] = 'md'
+  let blog_config['date'] = 1
+  call CreateTestWorkflow('Blog', blog_config)
   
-  call CreateTestWorkflow('Notes', {
-        \ 'root': g:test_workspace . '/notes', 
-        \ 'ext': 'txt',
-        \ 'date': 0
-        \ })
+  let notes_config = {}
+  let notes_config['root'] = g:test_workspace . '/notes'
+  let notes_config['ext'] = 'txt'
+  let notes_config['date'] = 0
+  call CreateTestWorkflow('Notes', notes_config)
   
   call AssertEqual(2, len(keys(g:struct_workflows)), 'Should have 2 workflows')
   call Assert(has_key(g:struct_workflows, 'Blog'), 'Blog workflow should exist')
