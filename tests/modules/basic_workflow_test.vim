@@ -4,12 +4,12 @@
 " Test basic workflow creation and initialization
 function! TestBasicWorkflowCreation()
   " Test creating a simple workflow
-  call CreateTestWorkflow('TestBlog', {
-        \ 'root': g:test_workspace . '/blog',
-        \ 'ext': 'md',
-        \ 'date': 1,
-        \ 'mandatory-title': 1
-        \ })
+  let workflow_config = {}
+  let workflow_config['root'] = g:test_workspace . '/blog'
+  let workflow_config['ext'] = 'md'
+  let workflow_config['date'] = 1
+  let workflow_config['mandatory-title'] = 1
+  call CreateTestWorkflow('TestBlog', workflow_config)
   
   " Verify workflow exists
   call AssertExists('g:struct_workflows', 'g:struct_workflows should exist after creation')
@@ -26,9 +26,9 @@ endfunction
 function! TestWorkflowValidation()
   " Test workflow without required ext key
   try
-    call CreateTestWorkflow('InvalidWorkflow', {
-          \ 'root': g:test_workspace . '/invalid'
-          \ })
+    let invalid_config = {}
+    let invalid_config['root'] = g:test_workspace . '/invalid'
+    call CreateTestWorkflow('InvalidWorkflow', invalid_config)
     call TestFail('Should have failed due to missing ext key')
   catch
     " Expected to fail
@@ -36,9 +36,9 @@ function! TestWorkflowValidation()
   
   " Test workflow without required root key  
   try
-    call CreateTestWorkflow('InvalidWorkflow2', {
-          \ 'ext': 'txt'
-          \ })
+    let invalid_config2 = {}
+    let invalid_config2['ext'] = 'txt'
+    call CreateTestWorkflow('InvalidWorkflow2', invalid_config2)
     call TestFail('Should have failed due to missing root key')
   catch
     " Expected to fail

@@ -272,6 +272,30 @@ function! RunTestModule()
     call add(results, "TESTS_FAILED: " . g:tests_failed)
     call add(results, "MODULE: " . g:test_module_name)
     call writefile(results, result_file)
+    
+    " Write detailed failure information to separate file
+    if g:tests_failed > 0
+      let failure_file = g:test_temp_dir . "/test_failures.txt"
+      let failure_details = []
+      call add(failure_details, "DETAILED FAILURE REPORT FOR " . g:test_module_name)
+      call add(failure_details, "=" . repeat("=", len(g:test_module_name) + 30))
+      for test_name in keys(g:test_results)
+        let result = g:test_results[test_name]
+        if result.status == 'failed' || result.status == 'error'
+          call add(failure_details, "")
+          call add(failure_details, "FAILED TEST: " . test_name)
+          for error in result.errors
+            call add(failure_details, "  Message: " . error.message)
+            if error.file != ""
+              call add(failure_details, "  File: " . error.file . " (line " . error.line . ")")
+            endif
+            call add(failure_details, "  Time: " . error.time)
+          endfor
+        endif
+      endfor
+      call writefile(failure_details, failure_file)
+    endif
+    
     echom "Results written to: " . result_file
   endif
   
