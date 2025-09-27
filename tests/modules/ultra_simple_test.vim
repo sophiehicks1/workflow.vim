@@ -27,11 +27,10 @@ endfunction
 function! TestWorkflowCreation()
   " Test basic workflow creation
   let g:struct_workflows = {}
-  let g:struct_workflows['TestWorkflow'] = {
-        \ 'root': g:test_temp_dir . '/test_root',
-        \ 'ext': 'txt',
-        \ 'date': 0
-        \ }
+  let g:struct_workflows['TestWorkflow'] = {}
+  let g:struct_workflows['TestWorkflow']['root'] = g:test_temp_dir . '/test_root'
+  let g:struct_workflows['TestWorkflow']['ext'] = 'txt'
+  let g:struct_workflows['TestWorkflow']['date'] = 0
         
   call SimpleAssert(has_key(g:struct_workflows, 'TestWorkflow'), "Workflow should be created")
   call SimpleAssert(g:struct_workflows['TestWorkflow']['ext'] == 'txt', "Extension should be txt")
