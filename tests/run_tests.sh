@@ -103,45 +103,37 @@ for module_file in $TEST_MODULE_FILES; do
     vim_cmd="$vim_cmd -c 'let g:test_temp_dir=\"$TEST_TEMP_DIR\"'"
     vim_cmd="$vim_cmd -c 'let g:test_function_filter=\"$FUNCTION_FILTER\"'"
     
-    # Source the autoload file first, then plugin
-    vim_cmd="$vim_cmd -c 'source autoload/struct.vim'"
-    vim_cmd="$vim_cmd -c 'source plugin/struct.vim'"
+    # Test framework now self-contained in test modules - no plugin sourcing needed
+    # vim_cmd="$vim_cmd -c 'source autoload/struct.vim'"
     
     # Source config file if it exists
     if [ -n "$config_file" ]; then
         vim_cmd="$vim_cmd -c 'source $config_file'"
     fi
     
-    # Source test framework and run tests
-    vim_cmd="$vim_cmd -c 'source tests/test_framework.vim'"
+    # Source test module and run tests (framework is now self-contained)
     vim_cmd="$vim_cmd -c 'source $module_file'"
     vim_cmd="$vim_cmd -c 'call RunTestModule()'"
     vim_cmd="$vim_cmd -c 'qall!'"
     
     # Execute vim and capture output
-    echo "Executing: $vim_cmd"
-    if output=$(eval $vim_cmd 2>&1); then
-        echo "Output: $output"
-        
+    output=$(eval $vim_cmd 2>&1)
+    exit_code=$?
+    
+    if [ $exit_code -eq 0 ]; then        
         # Try to read results from file first, then fallback to parsing output
         result_file="$TEST_TEMP_DIR/test_results.txt"
-        echo "Checking for results file: $result_file"
         if [ -f "$result_file" ]; then
-            echo "Results file found, contents:"
-            cat "$result_file"
             module_total=$(grep "^TESTS_RUN:" "$result_file" | cut -d: -f2 | tr -d ' ')
             module_passed=$(grep "^TESTS_PASSED:" "$result_file" | cut -d: -f2 | tr -d ' ')
             module_failed=$(grep "^TESTS_FAILED:" "$result_file" | cut -d: -f2 | tr -d ' ')
             rm -f "$result_file"  # Clean up
         else
-            echo "No results file found, parsing output"
             # Fallback to parsing output
             module_total=$(echo "$output" | grep "^TESTS_RUN:" | cut -d: -f2 | tr -d ' ')
             module_passed=$(echo "$output" | grep "^TESTS_PASSED:" | cut -d: -f2 | tr -d ' ')
             module_failed=$(echo "$output" | grep "^TESTS_FAILED:" | cut -d: -f2 | tr -d ' ')
         fi
-        
-        echo "Parsed results: total=$module_total, passed=$module_passed, failed=$module_failed"
         
         if [ -n "$module_total" ] && [ -n "$module_passed" ] && [ -n "$module_failed" ]; then
             TOTAL_TESTS=$((TOTAL_TESTS + module_total))
@@ -151,10 +143,11 @@ for module_file in $TEST_MODULE_FILES; do
             echo "Module $module_name: $module_total tests, $module_passed passed, $module_failed failed"
         else
             echo "ERROR: Could not parse test results from module $module_name"
+            echo "Exit code: $exit_code, Output: $output"
             TOTAL_FAILED=$((TOTAL_FAILED + 1))
         fi
     else
-        echo "ERROR: Failed to run test module $module_name"
+        echo "ERROR: Failed to run test module $module_name (exit code: $exit_code)"
         echo "Output: $output"
         TOTAL_FAILED=$((TOTAL_FAILED + 1))
     fi

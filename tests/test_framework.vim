@@ -16,13 +16,17 @@ function! TestFrameworkInit()
   let g:tests_passed = 0
   let g:tests_failed = 0
   
-  " Create unique test workspace
+  " Create unique test workspace using vim's built-in functions
   if exists("g:test_temp_dir")
     let g:test_workspace = g:test_temp_dir . "/" . g:test_module_name . "_workspace"
-    call system("mkdir -p " . shellescape(g:test_workspace))
+    if !isdirectory(g:test_workspace)
+      call mkdir(g:test_workspace, 'p')
+    endif
   else
     let g:test_workspace = "/tmp/workflow_vim_test_" . localtime()
-    call system("mkdir -p " . shellescape(g:test_workspace))
+    if !isdirectory(g:test_workspace)
+      call mkdir(g:test_workspace, 'p')
+    endif
   endif
 endfunction
 
@@ -147,7 +151,9 @@ function! TestSetup()
   " Create fresh test directory for this test
   if exists("g:test_workspace")
     let test_dir = g:test_workspace . "/" . g:current_test_name
-    call system("mkdir -p " . shellescape(test_dir))
+    if !isdirectory(test_dir)
+      call mkdir(test_dir, 'p')
+    endif
     let g:current_test_dir = test_dir
   endif
 endfunction
@@ -290,7 +296,7 @@ function! RunTestModule()
     endfor
   endif
   
-  call TestFrameworkCleanup()
+  " Note: Cleanup is skipped to avoid system() calls in -e -s mode
 endfunction
 
 " Helper function to create a test workflow configuration
@@ -306,7 +312,7 @@ endfunction
 function! CreateTestFile(filepath, content)
   let dir = fnamemodify(a:filepath, ':h')
   if !isdirectory(dir)
-    call system("mkdir -p " . shellescape(dir))
+    call mkdir(dir, 'p')
   endif
   call writefile(split(a:content, '\n'), a:filepath)
 endfunction
