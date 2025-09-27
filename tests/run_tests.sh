@@ -103,15 +103,16 @@ for module_file in $TEST_MODULE_FILES; do
     vim_cmd="$vim_cmd -c 'let g:test_temp_dir=\"$TEST_TEMP_DIR\"'"
     vim_cmd="$vim_cmd -c 'let g:test_function_filter=\"$FUNCTION_FILTER\"'"
     
-    # Test framework now self-contained in test modules - no plugin sourcing needed
-    # vim_cmd="$vim_cmd -c 'source autoload/struct.vim'"
+    # Source the autoload file to make plugin functions available for testing
+    vim_cmd="$vim_cmd -c 'source autoload/struct.vim'"
     
     # Source config file if it exists
     if [ -n "$config_file" ]; then
         vim_cmd="$vim_cmd -c 'source $config_file'"
     fi
     
-    # Source test module and run tests (framework is now self-contained)
+    # Source test framework and run tests
+    vim_cmd="$vim_cmd -c 'source tests/test_framework.vim'"
     vim_cmd="$vim_cmd -c 'source $module_file'"
     vim_cmd="$vim_cmd -c 'call RunTestModule()'"
     vim_cmd="$vim_cmd -c 'qall!'"

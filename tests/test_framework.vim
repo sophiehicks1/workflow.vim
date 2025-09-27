@@ -122,13 +122,12 @@ endfunction
 
 " Record a test failure with detailed information
 function! TestFail(message)
-  let error_info = {
-        \ 'test': g:current_test_name,
-        \ 'message': a:message,
-        \ 'file': expand('%:p'),
-        \ 'line': line('.'),
-        \ 'time': strftime('%Y-%m-%d %H:%M:%S')
-        \ }
+  let error_info = {}
+  let error_info['test'] = g:current_test_name
+  let error_info['message'] = a:message
+  let error_info['file'] = expand('%:p')
+  let error_info['line'] = line('.')
+  let error_info['time'] = strftime('%Y-%m-%d %H:%M:%S')
   
   if !has_key(g:test_results, g:current_test_name)
     let g:test_results[g:current_test_name] = {'status': 'unknown', 'errors': []}
@@ -210,13 +209,12 @@ function! RunTestFunction(test_name)
     " Test failed with unexpected error
     let g:test_results[a:test_name].status = 'error'
     let g:tests_failed += 1
-    let error_info = {
-          \ 'test': a:test_name,
-          \ 'message': 'Unexpected error: ' . v:exception,
-          \ 'file': expand('%:p'),
-          \ 'line': line('.'),
-          \ 'time': strftime('%Y-%m-%d %H:%M:%S')
-          \ }
+    let error_info = {}
+    let error_info['test'] = a:test_name
+    let error_info['message'] = 'Unexpected error: ' . v:exception
+    let error_info['file'] = expand('%:p')
+    let error_info['line'] = line('.')
+    let error_info['time'] = strftime('%Y-%m-%d %H:%M:%S')
     call add(g:test_results[a:test_name].errors, error_info)
     echom "ERROR: " . a:test_name . " - " . v:exception
     
