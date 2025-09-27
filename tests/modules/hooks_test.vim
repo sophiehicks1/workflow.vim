@@ -6,12 +6,12 @@ function! TestOnloadHook()
   " Create a test file to use as a marker
   let marker_file = g:test_workspace . '/onload_marker.txt'
   
-  call CreateTestWorkflow('OnloadTest', {
-        \ 'root': g:test_workspace . '/onload_test',
-        \ 'ext': 'txt',
-        \ 'date': 0,
-        \ 'onload': 'call writefile(["onload executed"], "' . marker_file . '")'
-        \ })
+  let config = {}
+  let config['root'] = g:test_workspace . '/onload_test'
+  let config['ext'] = 'txt'
+  let config['date'] = 0
+  let config['onload'] = 'call writefile(["onload executed"], "' . marker_file . '")'
+  call CreateTestWorkflow('OnloadTest', config)
   
   " The workflow should be created successfully
   call Assert(has_key(g:struct_workflows, 'OnloadTest'), 'OnloadTest workflow should exist')
