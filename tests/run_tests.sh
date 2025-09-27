@@ -142,6 +142,17 @@ for module_file in $TEST_MODULE_FILES; do
             TOTAL_FAILED=$((TOTAL_FAILED + module_failed))
             
             echo "Module $module_name: $module_total tests, $module_passed passed, $module_failed failed"
+            
+            # Show detailed failure information if there are failures
+            if [ "$module_failed" -gt 0 ]; then
+                failure_file="$TEST_TEMP_DIR/test_failures.txt"
+                if [ -f "$failure_file" ]; then
+                    echo ""
+                    cat "$failure_file"
+                    echo ""
+                    rm -f "$failure_file"  # Clean up
+                fi
+            fi
         else
             echo "ERROR: Could not parse test results from module $module_name"
             echo "Exit code: $exit_code, Output: $output"

@@ -15,9 +15,46 @@ Installation methods:
 
 ### Testing and Validation
 
-**Important**: This repository has no automated test suite. All validation must be done manually.
+**Important**: This repository has a comprehensive automated test framework located in the `tests/` directory.
 
-To validate changes:
+**Running Tests**:
+```bash
+# Run all tests
+./tests/run_tests.sh
+
+# Run tests for a specific module
+./tests/run_tests.sh --module basic_workflow_working_test
+
+# Run a specific test function
+./tests/run_tests.sh --function TestBasicWorkflowCreation
+
+# Get help
+./tests/run_tests.sh --help
+```
+
+**Test Framework Structure**:
+- `tests/run_tests.sh` - Main test runner script
+- `tests/test_framework.vim` - Shared testing framework with assertion functions
+- `tests/modules/` - Individual test modules for different functionality areas
+- `tests/configs/` - Configuration files for test modules
+- `tests/README.md` - Comprehensive testing documentation
+
+**When Making Changes - You MUST**:
+1. **Run the existing tests** to ensure nothing breaks: `./tests/run_tests.sh`
+2. **Add new tests** for any new functionality you implement
+3. **Use the shared test framework** - do NOT create module-specific assertion helpers
+4. **Ensure all tests pass** before submitting changes
+
+**Writing Tests**:
+- Use the shared assertion functions from `test_framework.vim`: `Assert()`, `AssertEqual()`, `AssertExists()`, etc.
+- Follow the naming convention: `Test*` for test functions
+- Test modules should match configs: `my_test.vim` and `my_test_config.vim`
+- Write focused, single-purpose test functions
+- Test both positive and negative cases
+- Include descriptive assertion messages
+
+**Manual Validation** (in addition to automated tests):
+When making changes, you should also manually test:
 1. Start Vim with a test configuration file that includes the plugin
 2. Define test workflows in the configuration
 3. Test all workflow commands and functionality systematically
@@ -118,7 +155,13 @@ Essential commands to verify during testing:
 
 Before submitting any changes:
 
-1. **Code Review Checklist**:
+1. **Automated Testing**:
+   - Run the full test suite: `./tests/run_tests.sh`
+   - Ensure all tests pass - fix any failures before proceeding
+   - Add new tests for any functionality you add or modify
+   - Use shared framework assertions, avoid creating custom test helpers
+
+2. **Code Review Checklist**:
    - Functions are single-purpose and well-named
    - No function exceeds 20 lines
    - Minimal nesting levels (max 2)
@@ -126,10 +169,11 @@ Before submitting any changes:
    - Proper error handling with `s:echoError()`
 
 2. **Functionality Testing**:
-   - All existing workflows continue to work
+   - All existing workflows continue to work  
    - New features integrate seamlessly
    - Error conditions are handled gracefully
    - Cross-platform compatibility maintained
+   - **All automated tests pass**: `./tests/run_tests.sh`
 
 3. **Documentation Updates**:
    - README.md updated if functionality changes
@@ -143,7 +187,14 @@ Before submitting any changes:
 ```
 workflow.vim/
 ├── README.md              # User documentation and examples
-├── COPILOT_INSTRUCTIONS.md # This file - development guidelines
+├── .github/
+│   └── COPILOT_INSTRUCTIONS.md # This file - development guidelines
+├── tests/                 # Automated testing framework
+│   ├── run_tests.sh       # Main test runner
+│   ├── test_framework.vim # Shared testing utilities
+│   ├── README.md          # Testing documentation
+│   ├── modules/           # Test modules
+│   └── configs/           # Test configurations
 ├── plugin/
 │   └── struct.vim         # Plugin initialization and global config
 └── autoload/
