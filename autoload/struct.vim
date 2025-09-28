@@ -231,7 +231,7 @@ function! struct#openFile(workflowName, ...)
   try
     call s:openAndPostProcess(workflow, locator)
   catch /Invalid file locator '.*/
-    call s:echoError("Workflow '".a:workflowName."' requires a title")
+    throw "Workflow '".a:workflowName."' requires a title"
   endtry
 endfunction
 
@@ -306,7 +306,7 @@ function! struct#insertPath(workflowName, path)
     normal! "ap
     let @a = bak
   else
-    call s:echoError("Invalid path: ".a:path)
+    throw "Invalid path: ".a:path
   endif
 endfunction
 
@@ -356,35 +356,44 @@ function! s:rootIsNotADirectory(workflow)
   return !isdirectory(fnamemodify(a:workflow['root'], ":p"))
 endfunction
 
+function! s:validateRoot(workflow, errors)
+  if s:rootDoesNotExist(a:workflow)
+    call mkdir(fnamemodify(a:workflow['root'], ':p'), 'p')
+  endif
+  if s:rootIsNotADirectory(a:workflow)
+    call add(a:errors, "root directory '" . a:workflow['root'] . "'is not a directory")
+  endif
+endfunction
+
+function! s:validateWorkflowName(name, errors)
+  if len(a:name) == 0
+    call add(a:errors, "invalid workflow name. Name must be non-empty")
+  endif
+  if match(a:name, '^[A-Z][a-zA-Z0-9]*$') == -1
+    call add(a:errors, "name must start with an uppercase letter, and only contain alphanumeric chars.")
+  endif
+endfunction
+
 function! s:validateWorkflow(name)
   let workflow = g:struct_workflows[a:name]
   let errors = []
+  call s:validateWorkflowName(a:name, errors)
   if !has_key(workflow, 'ext')
     call add(errors, "does not contain the mandatory 'ext' key")
   endif
-  if !has_key(workflow, 'root')
+  if has_key(workflow, 'root')
+    call s:validateRoot(workflow, errors)
+  else
     call add(errors, "does not contain the mandatory 'root' key")
   endif
-  if s:rootDoesNotExist(workflow)
-    call mkdir(fnamemodify(workflow['root'], ':p'), 'p')
-  endif
-  if s:rootIsNotADirectory(workflow)
-    call add(errors, "root directory '" . workflow['root'] . "'is not a directory")
-  endif
   return errors
-endfunction
-
-function! s:echoError(error)
-  echohl Error
-  echom a:error
-  echohl None
 endfunction
 
 function! s:initializeWorkflow(name)
   let errors = s:validateWorkflow(a:name)
   if len(errors) > 0
     for error in errors
-      call s:echoError("Invalid workflow '".a:name."' - ".error)
+      throw "Invalid workflow '".a:name."' - ".error
     endfor
   else
     call s:makeExCommands(a:name)
