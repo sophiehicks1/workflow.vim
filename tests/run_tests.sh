@@ -88,13 +88,6 @@ else
             "ultra_simple_test.vim"
         )
         
-        # Modules with syntax issues (temporarily excluded until fixed)
-        BROKEN_SYNTAX_MODULES=(
-            "hooks_test.vim"
-            "template_test.vim"
-            "validation_test.vim"
-        )
-        
         FILTERED_FILES=""
         for module_file in $TEST_MODULE_FILES; do
             module_name=$(basename "$module_file")
@@ -107,16 +100,6 @@ else
                     break
                 fi
             done
-            
-            # Check broken syntax modules
-            if [ "$exclude" = false ]; then
-                for broken_module in "${BROKEN_SYNTAX_MODULES[@]}"; do
-                    if [[ "$module_name" == "$broken_module" ]]; then
-                        exclude=true
-                        break
-                    fi
-                done
-            fi
             
             if [ "$exclude" = false ]; then
                 FILTERED_FILES="$FILTERED_FILES $module_file"

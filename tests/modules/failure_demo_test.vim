@@ -6,5 +6,4 @@ endfunction
 
 function! TestFailingExample()
   call Assert(1 == 2, 'This test should fail')
-  call Assert('hello' == 'world', 'This should also fail')
 endfunction
