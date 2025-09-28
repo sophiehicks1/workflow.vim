@@ -108,6 +108,7 @@ function! AssertThrows(command, pattern, ...)
   try
     execute a:command
   catch
+    echo "Caught exception: " . v:exception
     if match(v:exception, a:pattern) != -1
       let caught = 1
     else

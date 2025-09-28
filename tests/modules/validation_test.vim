@@ -64,26 +64,28 @@ endfunction
 
 " Test workflow with empty name
 function! TestEmptyWorkflowName()
-  " Empty workflow names should be possible (though not recommended)
-  call CreateTestWorkflow('', {
-        \ 'root': g:test_workspace . '/empty_name',
-        \ 'ext': 'txt',
-        \ 'date': 0
-        \ })
+  let g:struct_workflows = {
+        \ '': {
+        \   'root': g:test_workspace . '/empty_name',
+        \   'ext': 'txt',
+        \   'date': 0
+        \ }
+        \ }
   
-  call Assert(has_key(g:struct_workflows, ''), 'Empty workflow name should be allowed')
+  call AssertThrows('call struct#initialize()', 'name.*empty', 'Should fail due to empty workflow name')
 endfunction
 
 " Test workflow with special characters in name
 function! TestSpecialCharacterWorkflowName()
-  " Test workflow names with special characters
-  call CreateTestWorkflow('Test-Workflow_123', {
-        \ 'root': g:test_workspace . '/special_chars',
-        \ 'ext': 'txt',
-        \ 'date': 0
-        \ })
+  let g:struct_workflows = {
+        \ 'Test-Workflow_123': {
+        \   'root': g:test_workspace . '/special_chars',
+        \   'ext': 'txt',
+        \   'date': 0
+        \ }
+        \ }
   
-  call Assert(has_key(g:struct_workflows, 'Test-Workflow_123'), 'Workflow with special chars should work')
+  call AssertThrows('call struct#initialize()', 'name.*alphanumeric', 'Should fail due to non alphanumeric characters')
 endfunction
 
 " Test workflow extension validation
