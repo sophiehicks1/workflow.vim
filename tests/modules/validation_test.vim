@@ -141,12 +141,12 @@ function! TestWorkflowPathResolution()
   
   " Test relative path (relative to current working directory)
   call CreateTestWorkflow('RelativePath', {
-        \ 'root': 'test',
+        \ 'root': 'tests',
         \ 'ext': 'txt',
         \ 'date': 0
         \ })
   
-  call AssertEqual('test', g:struct_workflows['RelativePath']['root'], 'Relative path should be preserved')
+  call AssertEqual('tests', g:struct_workflows['RelativePath']['root'], 'Relative path should be preserved')
 endfunction
 
 " Test overwriting existing workflow
