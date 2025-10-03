@@ -2,6 +2,7 @@
 " Tests core workflow creation, file operations, and basic functionality
 
 " Test basic workflow creation and initialization
+" FIXME this doesn't test anything
 function! TestBasicWorkflowCreation()
   " Test creating a simple workflow
   let workflow_config = {}
@@ -46,6 +47,7 @@ function! TestWorkflowValidation()
 endfunction
 
 " Test filename generation
+" FIXME this skips the actual test part
 function! TestFilenameGeneration()
   let config = {}
   let config['root'] = g:test_workspace . '/notes'
@@ -79,6 +81,7 @@ function! TestDirectoryCreation()
 endfunction
 
 " Test workflow without date
+" FIXME this doesn't test anything
 function! TestWorkflowWithoutDate()
   let config = {}
   let config['root'] = g:test_workspace . '/simple'
@@ -92,6 +95,7 @@ function! TestWorkflowWithoutDate()
 endfunction
 
 " Test nested workflow configuration
+" FIXME this doesn't test anything
 function! TestNestedWorkflow()
   let config = {}
   let config['root'] = g:test_workspace . '/nested'
@@ -105,6 +109,7 @@ function! TestNestedWorkflow()
 endfunction
 
 " Test workflow with template
+" FIXME this doesn't test anything
 function! TestWorkflowWithTemplate()
   " Create a template file
   let template_path = g:test_workspace . '/template.md'
@@ -124,6 +129,7 @@ function! TestWorkflowWithTemplate()
 endfunction
 
 " Test period configurations
+" FIXME this doesn't test anything
 function! TestPeriodicWorkflows()
   " Test daily workflow (default)
   let daily_config = {}
@@ -159,6 +165,7 @@ function! TestPeriodicWorkflows()
 endfunction
 
 " Test workflow initialization creates commands
+" FIXME this doesn't test anything
 function! TestWorkflowCommandCreation()
   let config = {}
   let config['root'] = g:test_workspace . '/commands'
@@ -173,6 +180,7 @@ function! TestWorkflowCommandCreation()
 endfunction
 
 " Test multiple workflows
+" FIXME this doesn't test anything
 function! TestMultipleWorkflows()
   let blog_config = {}
   let blog_config['root'] = g:test_workspace . '/blog'

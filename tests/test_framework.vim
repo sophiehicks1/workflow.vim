@@ -61,6 +61,24 @@ function! AssertNotEqual(expected, actual, ...)
   endif
 endfunction
 
+"Assert that the current buffer name matches expected
+function! AssertBufferName(expected, ...)
+  let actual = expand('%:t')
+  let message = a:0 > 0 ? a:1 : "Expected buffer name " . string(a:expected) . " but got " . string(actual)
+  if a:expected != actual
+    call TestFail("AssertBufferName failed: " . message)
+  endif
+endfunction
+
+" Assert that the current buffer is in the expected directory
+function! AssertBufferInDirectory(expected_dir, ...)
+  let actual_dir = expand('%:p:h')
+  let message = a:0 > 0 ? a:1 : "Expected buffer directory " . string(a:expected_dir) . " but got " . string(actual_dir)
+  if a:expected_dir != actual_dir
+    call TestFail("AssertBufferInDirectory failed: " . message)
+  endif
+endfunction
+
 " Assert that a string matches a pattern
 function! AssertMatches(pattern, actual, ...)
   let message = a:0 > 0 ? a:1 : "Expected pattern " . string(a:pattern) . " but got " . string(a:actual)
@@ -86,10 +104,18 @@ function! AssertFileNotExists(filepath, ...)
 endfunction
 
 " Assert that a directory exists
-function! AssertDirExists(dirpath, ...)
+function! AssertDirectoryExists(dirpath, ...)
   let message = a:0 > 0 ? a:1 : "Expected directory " . a:dirpath . " to exist"
   if !isdirectory(a:dirpath)
     call TestFail("AssertDirExists failed: " . message)
+  endif
+endfunction
+
+" Assert that a directory does not exist
+function! AssertDirectoryNotExists(dirpath, ...)
+  let message = a:0 > 0 ? a:1 : "Expected directory " . a:dirpath . " to not exist"
+  if isdirectory(a:dirpath)
+    call TestFail("AssertDirNotExists failed: " . message)
   endif
 endfunction
 
@@ -119,6 +145,15 @@ function! AssertThrows(command, pattern, ...)
   if !caught
     call TestFail("AssertThrows failed: " . message)
   endif
+endfunction
+
+function! AssertDoesNotThrow(command, ...)
+  let message = a:0 > 0 ? a:1 : "Expected no exception from command: " . a:command
+  try
+    execute a:command
+  catch
+    call TestFail("AssertDoesNotThrow failed: " . message . ". Caught exception: " . v:exception)
+  endtry
 endfunction
 
 " Record a test failure with detailed information
