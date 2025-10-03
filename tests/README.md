@@ -35,12 +35,20 @@ tests/
 │   ├── basic_workflow_test.vim     # Basic workflow functionality tests
 │   ├── template_test.vim           # Template processing tests
 │   ├── hooks_test.vim              # Hook execution tests
-│   └── validation_test.vim         # Validation and error handling tests
+│   ├── validation_test.vim         # Validation and error handling tests
+│   └── meta/                       # Meta-tests (test framework validation)
+│       ├── failure_demo_test.vim   # Demonstrates failure reporting
+│       ├── simple_test.vim         # Basic framework validation
+│       └── ultra_simple_test.vim   # Minimal framework validation
 └── configs/                        # Test configuration files
     ├── basic_workflow_test_config.vim
     ├── template_test_config.vim
     ├── hooks_test_config.vim
-    └── validation_test_config.vim
+    ├── validation_test_config.vim
+    └── meta/                       # Meta-test configurations
+        ├── failure_demo_test_config.vim
+        ├── simple_test_config.vim
+        └── ultra_simple_test_config.vim
 ```
 
 ### Core Components
@@ -50,6 +58,25 @@ tests/
 3. **Test Modules**: Individual test files containing test functions
 4. **Test Configs**: Configuration files that set up test environments
 
+### Meta-Tests
+
+Meta-tests are tests that validate the test framework itself rather than the workflow.vim plugin. They are located in the `tests/modules/meta/` subdirectory and are automatically excluded from normal test runs.
+
+**Purpose:**
+- Verify that test framework assertions work correctly
+- Demonstrate failure reporting behavior
+- Validate test discovery and execution mechanisms
+
+**Running Meta-Tests:**
+- Use `--validate-test-framework` flag to include meta-tests in test runs
+- Use `--module <meta_test_name>` to run a specific meta-test module
+- Meta-tests are excluded by default to focus on plugin functionality tests
+
+**Available Meta-Test Modules:**
+- `failure_demo_test.vim` - Demonstrates how test failures are reported (includes intentional failures)
+- `simple_test.vim` - Basic framework validation tests
+- `ultra_simple_test.vim` - Minimal framework validation tests
+
 ## Test Runner Features
 
 The test runner (`run_tests.sh`) provides:
@@ -58,6 +85,7 @@ The test runner (`run_tests.sh`) provides:
 - **Temporary Directory Management**: Creates isolated test environments
 - **Module Filtering**: Run specific test modules with `--module`
 - **Function Filtering**: Run specific test functions with `--function`
+- **Meta-Test Exclusion**: Automatically excludes meta-tests (test framework validation tests) unless `--validate-test-framework` is specified
 - **Comprehensive Reporting**: Shows total tests run, passed, and failed
 - **Detailed Error Reporting**: Provides specific failure information
 - **Exit Code Support**: Returns appropriate exit codes for CI/CD integration
@@ -65,8 +93,11 @@ The test runner (`run_tests.sh`) provides:
 ### Usage Examples
 
 ```bash
-# Run all tests
+# Run all tests (excludes meta-tests)
 ./tests/run_tests.sh
+
+# Run all tests including meta-tests (test framework validation)
+./tests/run_tests.sh --validate-test-framework
 
 # Run only basic workflow tests
 ./tests/run_tests.sh --module basic_workflow_test
@@ -79,6 +110,9 @@ The test runner (`run_tests.sh`) provides:
 
 # Combine filters (run specific function in specific module)
 ./tests/run_tests.sh --module hooks_test --function TestOnloadHook
+
+# Run a meta-test module
+./tests/run_tests.sh --module failure_demo_test
 
 # Show help
 ./tests/run_tests.sh --help
@@ -288,12 +322,25 @@ The current test suite provides comprehensive coverage of:
 2. Follow existing patterns and best practices
 3. Test the specific function: `./tests/run_tests.sh --function TestFeatureName`
 
+### Adding New Meta-Test Modules
+
+Meta-tests validate the test framework itself. To add a new meta-test:
+
+1. Create test module file: `tests/modules/meta/new_meta_test.vim`
+2. Create config file: `tests/configs/meta/new_meta_test_config.vim`
+3. Write test functions that validate framework behavior
+4. Test your new meta-test: `./tests/run_tests.sh --module new_meta_test`
+
+**Note:** Meta-tests are automatically excluded from regular test runs. Place test modules in the `tests/modules/meta/` subdirectory to have them treated as meta-tests.
+
 ### Test Organization Tips
 
 - Group related functionality in the same module
 - Keep test functions focused and concise
 - Use descriptive names that explain what's being tested
 - Document complex test scenarios with comments
+- Place framework validation tests in `tests/modules/meta/`
+- Place plugin functionality tests in `tests/modules/`
 
 ## Continuous Integration
 

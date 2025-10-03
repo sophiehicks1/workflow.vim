@@ -79,31 +79,17 @@ if [ -n "$MODULE_FILTER" ]; then
 else
     TEST_MODULE_FILES=$(find "$TEST_MODULES_DIR" -name "*.vim" | sort)
     
-    # Exclude framework test modules unless --validate-test-framework is specified
+    # Exclude meta test modules unless --validate-test-framework is specified
     if [ "$VALIDATE_TEST_FRAMEWORK" = false ]; then
-        # Framework test modules to exclude by default
-        FRAMEWORK_MODULES=(
-            "failure_demo_test.vim"
-            "simple_test.vim"
-            "ultra_simple_test.vim"
-        )
-        
+        # Filter out any test modules in the meta/ subdirectory
         FILTERED_FILES=""
         for module_file in $TEST_MODULE_FILES; do
-            module_name=$(basename "$module_file")
-            exclude=false
-            
-            # Check framework modules
-            for framework_module in "${FRAMEWORK_MODULES[@]}"; do
-                if [[ "$module_name" == "$framework_module" ]]; then
-                    exclude=true
-                    break
-                fi
-            done
-            
-            if [ "$exclude" = false ]; then
-                FILTERED_FILES="$FILTERED_FILES $module_file"
+            # Check if the file path contains /meta/
+            if [[ "$module_file" == *"/meta/"* ]]; then
+                # Skip meta test modules
+                continue
             fi
+            FILTERED_FILES="$FILTERED_FILES $module_file"
         done
         TEST_MODULE_FILES=$FILTERED_FILES
     fi
@@ -126,7 +112,14 @@ for module_file in $TEST_MODULE_FILES; do
     echo "------------------------------"
     
     # Find corresponding config file
-    config_file="tests/configs/${module_name}_config.vim"
+    # Check if module is in a subdirectory (e.g., meta/)
+    module_subdir=$(dirname "$module_file" | sed "s|$TEST_MODULES_DIR||" | sed 's|^/||')
+    if [ -n "$module_subdir" ]; then
+        config_file="tests/configs/${module_subdir}/${module_name}_config.vim"
+    else
+        config_file="tests/configs/${module_name}_config.vim"
+    fi
+    
     if [ ! -f "$config_file" ]; then
         echo "WARNING: No config file found for module $module_name (expected: $config_file)"
         config_file=""
@@ -135,6 +128,7 @@ for module_file in $TEST_MODULE_FILES; do
     # Run the test module with vim
     vim_cmd="vim -e -s -u NONE --noplugin"
     vim_cmd="$vim_cmd -c 'let g:test_module_name=\"$module_name\"'"
+    vim_cmd="$vim_cmd -c 'let g:test_module_file=\"$module_file\"'"
     vim_cmd="$vim_cmd -c 'let g:test_temp_dir=\"$TEST_TEMP_DIR\"'"
     vim_cmd="$vim_cmd -c 'let g:test_function_filter=\"$FUNCTION_FILTER\"'"
     

@@ -231,7 +231,13 @@ function! RunTestModule()
   
   " Get all function names by looking at the test module file
   let functions = []
-  let module_file = "tests/modules/" . g:test_module_name . ".vim"
+  " Use g:test_module_file if available (supports subdirectories), 
+  " otherwise fallback to old behavior for backwards compatibility
+  if exists("g:test_module_file")
+    let module_file = g:test_module_file
+  else
+    let module_file = "tests/modules/" . g:test_module_name . ".vim"
+  endif
   
   " Read the test module file to find test functions
   if filereadable(module_file)
