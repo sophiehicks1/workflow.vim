@@ -1,0 +1,61 @@
+# DONE
+[X] initialize function that lets you create workflows with a repository root
+[X] basic workflow validation
+[X] repository root validation
+[X] generic open function that resolves the workflow and checks the extension
+[X] resolve to most specific workflow
+[X] function to parse a human friendly title format string, to make a title config
+[X] workflow specific title generation function, with support for dates
+
+# file name/title management
+[ ] function to validate filename based on a title config
+[ ] validate generated titles, and throw helpful error messages (e.g. when illegal characters are used)
+
+# file creation
+[ ] workflow specific file create function that validates file doesn't exist before creation
+[ ] templates for default file content
+
+# file opening
+[ ] validate opened file against title format
+
+# hooks
+[ ] execute on open hooks
+[ ] execute on create hooks
+[ ] workflow specific autocmds
+[ ] workflow specific mappings
+[ ] workflow specific aliases
+
+# ex commands
+[ ] workflow specific create command
+[ ] workflow specific grep command
+[ ] workflow specific open command, expects relative path, with tabcomplete backed by shell commands
+[ ] file rename command, that updates backlinks
+[ ] load backlinks to *list command (with option to filter to specific workflows?)
+
+# config and setup
+[ ] initialize repo root and workflows from json file, so it's shared with scripts (should be easy if we limit to strings and ints only, which I think is the plan anyway)
+
+# shell commands that filter input file list, or filter all files (optionally scoped to a specific repo)
+[ ] fuzzy name match
+[ ] file content grep on repo or workflow
+[ ] search/filter by tag (filters input (or all files, if no input) to those  containing given tag)
+[ ] search/filter by text (filters input (or all files, if no input) to those  matching given text)
+[ ] search/filter by modification date
+[ ] search/filter by creation date
+[ ] search/filter by link (filters input (or all files, if no input) to those linked to given file path)
+[ ] search around (reads path(s?) from stdin or cmdarg and returns linked files linked)
+[ ] embedding search
+
+# other shell commands
+[ ] file rename command that updates backlinks
+
+# other stuff to think about
+[ ] go through old code in ./old_struct.vim to look for functionality that's not supported any more
+[ ] think about how to implement a cntr integration
+[ ] go through '/home/sophie/Documents/Stuff/capture/2025-09-22 notes on my notes system.md' to make sure I can implement everything
+[ ] configure a custom wikilinks resolver for mdpp
+[ ] finish off the wikilinks autocomplete in mdpp
+[ ] configure a wikilinks resolver for mdpp
+[ ] check for mdpp and open.vim dependencies to gate wikilinks support
+[ ] do I want any git integration?
+[ ] do I want to add `/commands` for inserting newly created file links?

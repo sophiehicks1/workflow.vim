@@ -15,7 +15,7 @@ function! TestFrameworkInit()
   let g:tests_run = 0
   let g:tests_passed = 0
   let g:tests_failed = 0
-  
+
   " Create unique test workspace using vim's built-in functions
   if exists("g:test_temp_dir")
     let g:test_workspace = g:test_temp_dir . "/" . g:test_module_name . "_workspace"
@@ -47,7 +47,8 @@ endfunction
 
 " Assert that two values are equal
 function! AssertEqual(expected, actual, ...)
-  let message = a:0 > 0 ? a:1 : "Expected " . string(a:expected) . " but got " . string(a:actual)
+  let default_message = "Expected " . string(a:expected) . " but got " . string(a:actual)
+  let message = a:0 > 0 ? a:1 . ' (' . default_message . ')' : default_message
   if a:expected != a:actual
     call TestFail("AssertEqual failed: " . message)
   endif
@@ -55,16 +56,68 @@ endfunction
 
 " Assert that two values are not equal
 function! AssertNotEqual(expected, actual, ...)
-  let message = a:0 > 0 ? a:1 : "Expected not " . string(a:expected) . " but got " . string(a:actual)
+  let default_message = "Expected not " . string(a:expected) . " but got " . string(a:actual)
+  let message = a:0 > 0 ? a:1 . ' (' . default_message . ')' : default_message
   if a:expected == a:actual
     call TestFail("AssertNotEqual failed: " . message)
+  endif
+endfunction
+
+" helper for deep equality check when both are dicts
+function! s:_deep_equal_dict(a, b)
+  let keys_a = sort(keys(a:a))
+  let keys_b = sort(keys(a:b))
+  if keys_a != keys_b
+    return 0
+  endif
+  for key in keys_a
+    if !s:deep_equal(a:a[key], a:b[key])
+      return 0
+    endif
+  endfor
+  return 1
+endfunction
+
+" helper for deep equality check when both are lists
+function! s:_deep_equal_list(a, b)
+  if len(a:a) != len(a:b)
+    return 0
+  endif
+  for i in range(len(a:a))
+    if !s:deep_equal(a:a[i], a:b[i])
+      return 0
+    endif
+  endfor
+  return 1
+endfunction
+
+function! s:deep_equal(a, b)
+  if type(a:a) != type(a:b)
+    return 0
+  endif
+  if type(a:a) == type({})
+    return s:_deep_equal_dict(a:a, a:b)
+  elseif type(a:a) == type([])
+    return s:_deep_equal_list(a:a, a:b)
+  else
+    return a:a ==# a:b
+  endif
+endfunction
+
+" Assert that two objects are equal
+function! AssertDeepEqual(expected, actual, ...)
+  let default_message = "Expected " . string(a:expected) . " but got " . string(a:actual)
+  let message = a:0 > 0 ? a:1 . ' (' . default_message . ')' : default_message
+  if !s:deep_equal(a:expected, a:actual)
+    call TestFail("AssertDeepEqual failed: " . message)
   endif
 endfunction
 
 "Assert that the current buffer name matches expected
 function! AssertBufferName(expected, ...)
   let actual = expand('%:t')
-  let message = a:0 > 0 ? a:1 : "Expected buffer name " . string(a:expected) . " but got " . string(actual)
+  let default_message = "Expected buffer name " . string(a:expected) . " but got " . string(actual)
+  let message = a:0 > 0 ? a:1 . ' (' . default_message . ')' : default_message
   if a:expected != actual
     call TestFail("AssertBufferName failed: " . message)
   endif
@@ -73,7 +126,8 @@ endfunction
 " Assert that the current buffer is in the expected directory
 function! AssertBufferInDirectory(expected_dir, ...)
   let actual_dir = expand('%:p:h')
-  let message = a:0 > 0 ? a:1 : "Expected buffer directory " . string(a:expected_dir) . " but got " . string(actual_dir)
+  let default_message = "Expected buffer directory " . string(a:expected_dir) . " but got " . string(actual_dir)
+  let message = a:0 > 0 ? a:1 . ' (' . default_message . ')' : default_message
   if a:expected_dir != actual_dir
     call TestFail("AssertBufferInDirectory failed: " . message)
   endif
@@ -104,7 +158,7 @@ function! AssertFileNotExists(filepath, ...)
 endfunction
 
 " Assert that a directory exists
-function! AssertDirectoryExists(dirpath, ...)
+function! AssertDirExists(dirpath, ...)
   let message = a:0 > 0 ? a:1 : "Expected directory " . a:dirpath . " to exist"
   if !isdirectory(a:dirpath)
     call TestFail("AssertDirExists failed: " . message)
@@ -112,7 +166,7 @@ function! AssertDirectoryExists(dirpath, ...)
 endfunction
 
 " Assert that a directory does not exist
-function! AssertDirectoryNotExists(dirpath, ...)
+function! AssertDirNotExists(dirpath, ...)
   let message = a:0 > 0 ? a:1 : "Expected directory " . a:dirpath . " to not exist"
   if isdirectory(a:dirpath)
     call TestFail("AssertDirNotExists failed: " . message)
@@ -129,10 +183,15 @@ endfunction
 
 " Assert that an exception is thrown
 function! AssertThrows(command, pattern, ...)
-  let message = a:0 > 0 ? a:1 : "Expected exception matching " . string(a:pattern) . " from command: " . a:command
+  let default_message = "Expected exception matching " . string(a:pattern) . " from command: " . string(a:command)
+  let message = a:0 > 0 ? a:1 . ' (' . default_message . ')' : default_message
   let caught = 0
   try
-    execute a:command
+    if type(a:command) == type(function('tr'))
+      call a:command()
+    else
+      execute a:command
+    endif
   catch
     echo "Caught exception: " . v:exception
     if match(v:exception, a:pattern) != -1
@@ -141,7 +200,7 @@ function! AssertThrows(command, pattern, ...)
       call TestFail("AssertThrows failed: Wrong exception thrown. Expected pattern " . string(a:pattern) . " but got: " . v:exception)
     endif
   endtry
-  
+
   if !caught
     call TestFail("AssertThrows failed: " . message)
   endif
@@ -150,7 +209,11 @@ endfunction
 function! AssertDoesNotThrow(command, ...)
   let message = a:0 > 0 ? a:1 : "Expected no exception from command: " . a:command
   try
-    execute a:command
+    if type(a:command) == type(function('tr'))
+      call a:command()
+    else
+      execute a:command
+    endif
   catch
     call TestFail("AssertDoesNotThrow failed: " . message . ". Caught exception: " . v:exception)
   endtry
@@ -164,14 +227,14 @@ function! TestFail(message)
   let error_info['file'] = expand('%:p')
   let error_info['line'] = line('.')
   let error_info['time'] = strftime('%Y-%m-%d %H:%M:%S')
-  
+
   if !has_key(g:test_results, g:current_test_name)
     let g:test_results[g:current_test_name] = {'status': 'unknown', 'errors': []}
   endif
-  
+
   let g:test_results[g:current_test_name].status = 'failed'
   call add(g:test_results[g:current_test_name].errors, error_info)
-  
+
   " Throw exception to stop test execution
   throw "TEST_FAILURE: " . a:message
 endfunction
@@ -182,7 +245,7 @@ function! TestSetup()
   if exists("g:struct_workflows")
     unlet g:struct_workflows
   endif
-  
+
   " Create fresh test directory for this test
   if exists("g:test_workspace")
     let test_dir = g:test_workspace . "/" . g:current_test_name
@@ -199,7 +262,7 @@ function! TestTeardown()
   if exists("g:struct_workflows")
     unlet g:struct_workflows
   endif
-  
+
   " Clear test-specific variables
   if exists("g:current_test_dir")
     unlet g:current_test_dir
@@ -210,29 +273,29 @@ endfunction
 function! RunTestFunction(test_name)
   let g:current_test_name = a:test_name
   let g:tests_run += 1
-  
+
   " Initialize test result
   let g:test_results[a:test_name] = {'status': 'unknown', 'errors': []}
-  
+
   " Skip test if function filter is specified and doesn't match
   if exists("g:test_function_filter") && g:test_function_filter != "" && match(a:test_name, g:test_function_filter) == -1
     let g:test_results[a:test_name].status = 'skipped'
     echom "SKIPPING: " . a:test_name . " (filtered out)"
     return
   endif
-  
+
   try
     " Setup
     call TestSetup()
-    
+
     " Run the test
     execute "call " . a:test_name . "()"
-    
+
     " If we get here, the test passed
     let g:test_results[a:test_name].status = 'passed'
     let g:tests_passed += 1
     echom "PASSED: " . a:test_name
-    
+
   catch /^TEST_FAILURE:.*/
     " Test failed with assertion
     let g:tests_failed += 1
@@ -240,7 +303,7 @@ function! RunTestFunction(test_name)
     for error in g:test_results[a:test_name].errors
       echom "  ERROR: " . error.message
     endfor
-    
+
   catch
     " Test failed with unexpected error
     let g:test_results[a:test_name].status = 'error'
@@ -253,7 +316,7 @@ function! RunTestFunction(test_name)
     let error_info['time'] = strftime('%Y-%m-%d %H:%M:%S')
     call add(g:test_results[a:test_name].errors, error_info)
     echom "ERROR: " . a:test_name . " - " . v:exception
-    
+
   finally
     " Always clean up
     call TestTeardown()
@@ -263,17 +326,17 @@ endfunction
 " Discover and run all test functions in current file
 function! RunTestModule()
   call TestFrameworkInit()
-  
+
   " Get all function names by looking at the test module file
   let functions = []
-  " Use g:test_module_file if available (supports subdirectories), 
+  " Use g:test_module_file if available (supports subdirectories),
   " otherwise fallback to old behavior for backwards compatibility
   if exists("g:test_module_file")
     let module_file = g:test_module_file
   else
     let module_file = "tests/modules/" . g:test_module_name . ".vim"
   endif
-  
+
   " Read the test module file to find test functions
   if filereadable(module_file)
     let lines = readfile(module_file)
@@ -288,23 +351,23 @@ function! RunTestModule()
   else
     echom "ERROR: Cannot read test module file: " . module_file
   endif
-  
+
   " Debug: Print function discovery info
   echom "Module: " . g:test_module_name
-  echom "File: " . module_file  
+  echom "File: " . module_file
   echom "Found " . len(functions) . " test functions: " . join(functions, ', ')
-  
+
   " Run each test function
   for func_name in functions
     call RunTestFunction(func_name)
   endfor
-  
+
   " Print summary
   echom ""
   echom "TESTS_RUN: " . g:tests_run
-  echom "TESTS_PASSED: " . g:tests_passed  
+  echom "TESTS_PASSED: " . g:tests_passed
   echom "TESTS_FAILED: " . g:tests_failed
-  
+
   " Also write results to file for the test runner to parse
   if exists("g:test_temp_dir")
     let result_file = g:test_temp_dir . "/test_results.txt"
@@ -314,7 +377,7 @@ function! RunTestModule()
     call add(results, "TESTS_FAILED: " . g:tests_failed)
     call add(results, "MODULE: " . g:test_module_name)
     call writefile(results, result_file)
-    
+
     " Write detailed failure information to separate file
     if g:tests_failed > 0
       let failure_file = g:test_temp_dir . "/test_failures.txt"
@@ -337,10 +400,10 @@ function! RunTestModule()
       endfor
       call writefile(failure_details, failure_file)
     endif
-    
+
     echom "Results written to: " . result_file
   endif
-  
+
   " Print detailed failure information
   if g:tests_failed > 0
     echom ""
@@ -359,7 +422,7 @@ function! RunTestModule()
       endif
     endfor
   endif
-  
+
   " Note: Cleanup is skipped to avoid system() calls in -e -s mode
 endfunction
 
