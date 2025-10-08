@@ -8,15 +8,14 @@
 [X] workflow specific title generation function, with support for dates
 
 # file name/title management
-[ ] ! function to validate filename based on a title config
-[ ] ! validate generated titles, and throw helpful error messages (e.g. when illegal characters are used in variables)
+[ ] function to validate filename based on a title config
+[ ] validate generated titles, and throw helpful error messages (e.g. when illegal characters are used in variables)
 
 # file creation
-[ ] ! workflow specific file create function
 [ ] ! templates for default file content
 
 # file opening
-[ ] ! validate opened file against title format
+[ ] validate opened file against title format
 
 # hooks
 [ ] execute on open hooks
@@ -26,9 +25,10 @@
 [ ] workflow specific aliases
 
 # ex commands
-[ ] ! workflow specific create (or open) command
+[ ] ! workflow specific create/open command with name sugar
 [ ] workflow specific grep command
-[ ] ! workflow specific open command, expects relative path, with tabcomplete backed by shell commands
+[ ] ! workflow specific open/create command (without name sugar), expects relative path
+[ ] ! tabcomplete for relative path workflow specific open (backed by shell commands)
 [ ] file rename command, that updates backlinks
 [ ] load backlinks to *list command (with option to filter to specific workflows?)
 
@@ -55,7 +55,7 @@
 [ ] go through '/home/sophie/Documents/Stuff/capture/2025-09-22 notes on my notes system.md' to make sure I can implement everything
 [ ] ! configure a custom wikilinks resolver for mdpp
 [ ] ! finish off the wikilinks autocomplete in mdpp
-[ ] ! configure a wikilinks resolver for mdpp
+[ ] ! configure a wikilinks custom autocomplete for mdpp
 [ ] ! check for mdpp and open.vim dependencies to gate wikilinks support
 [ ] do I want any git integration?
 [ ] do I want to add `/commands` for inserting newly created file links?
@@ -63,3 +63,6 @@
 - configured with a sequence of matcher/completer pairs
 - omnicomplete function creates a context object, and passes that through the pairs in sequence
 - can then move mdpp's `[[` into that, while also adding `#tag` completion as a workflow hook, and `/command` completion in the slash-command plugin
+[ ] MDPP bug: <C-f> doesn't add in the right place when in the middle of some text
+[ ] MDPP bug: multi-line links
+
