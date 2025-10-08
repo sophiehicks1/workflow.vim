@@ -6,13 +6,14 @@
 [X] resolve to most specific workflow
 [X] function to parse a human friendly title format string, to make a title config
 [X] workflow specific title generation function, with support for dates
+[X] open function that takes title and variables, and calls into generic function
+[X] ! templates for default file content
 
 # file name/title management
 [ ] function to validate filename based on a title config
 [ ] validate generated titles, and throw helpful error messages (e.g. when illegal characters are used in variables)
 
 # file creation
-[ ] ! templates for default file content
 
 # file opening
 [ ] validate opened file against title format

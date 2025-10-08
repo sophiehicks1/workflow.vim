@@ -111,20 +111,6 @@ for module_file in $TEST_MODULE_FILES; do
     echo "Running module: $module_name"
     echo "------------------------------"
     
-    # Find corresponding config file
-    # Check if module is in a subdirectory (e.g., meta/)
-    module_subdir=$(dirname "$module_file" | sed "s|$TEST_MODULES_DIR||" | sed 's|^/||')
-    if [ -n "$module_subdir" ]; then
-        config_file="tests/configs/${module_subdir}/${module_name}_config.vim"
-    else
-        config_file="tests/configs/${module_name}_config.vim"
-    fi
-    
-    if [ ! -f "$config_file" ]; then
-        echo "WARNING: No config file found for module $module_name (expected: $config_file)"
-        config_file=""
-    fi
-    
     # Run the test module with vim
     vim_cmd="vim -e -s -u NONE --noplugin"
     vim_cmd="$vim_cmd -c 'let g:test_module_name=\"$module_name\"'"
@@ -134,11 +120,6 @@ for module_file in $TEST_MODULE_FILES; do
     
     # Source the autoload file to make plugin functions available for testing
     vim_cmd="$vim_cmd -c 'source autoload/struct.vim'"
-    
-    # Source config file if it exists
-    if [ -n "$config_file" ]; then
-        vim_cmd="$vim_cmd -c 'source $config_file'"
-    fi
     
     # Source test framework and run tests
     vim_cmd="$vim_cmd -c 'source tests/test_framework.vim'"
@@ -151,6 +132,17 @@ for module_file in $TEST_MODULE_FILES; do
     exit_code=$?
     
     if [ $exit_code -eq 0 ]; then        
+        # Print debug log if file is not empty
+        debug_log="$TEST_TEMP_DIR/test_debug.log"
+        if [ -s "$debug_log" ]; then
+            echo ""
+            echo "Debug Log:"
+            echo "------------------------------"
+            cat "$debug_log"
+            echo "------------------------------"
+            rm -f "$debug_log"  # Clean up
+        fi
+
         # Try to read results from file first, then fallback to parsing output
         result_file="$TEST_TEMP_DIR/test_results.txt"
         if [ -f "$result_file" ]; then

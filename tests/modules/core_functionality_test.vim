@@ -155,7 +155,7 @@ function! TestTitleFormatValidation()
         \ 'struct#parse_title_format correctly parses static title formats')
 endfunction
 
-function TestTitleGeneration()
+function! TestTitleGeneration()
   call struct#initialize(g:test_workspace . '/RepoRoot', {
         \ 'Meeting': {
         \   'root': 'meetings/',
@@ -234,4 +234,30 @@ function TestTitleGeneration()
   let l:expected_journal_full = strftime('%Y-%m-%d') . ' a journal entry.md'
   call AssertEqual(l:expected_journal_full, l:title_journal_full,
         \ 'struct#generate_title generates titles with date and all optional variables correctly')
+endfunction
+
+function! TestFileOpenWithFilenameGeneration()
+  call struct#initialize(g:test_workspace . '/RepoRoot', {
+        \ 'Meeting': {
+        \   'root': 'meetings/',
+        \   'ext': 'md',
+        \   'title_format': '%Y-%m-%d - $client - $subject',
+        \ },
+        \ })
+
+  " open file with generated filename
+  call struct#open('Meeting', {'$client': 'AcmeCorp', '$subject': 'ProjectX'})
+  let l:expected_filename = strftime('%Y-%m-%d') . ' - AcmeCorp - ProjectX.md'
+  call AssertBufferName(l:expected_filename,
+        \ 'struct#open generates filename from title format and opens it')
+  call AssertBufferInDirectory(g:test_workspace . '/RepoRoot/meetings',
+        \ 'struct#open opens the file in the correct directory')
+
+  " open file with missing required variable should throw
+  call AssertThrows(function('struct#open', ['Meeting', {'$client': 'AcmeCorp'}]),
+        \ 'Missing required variable: $subject')
+
+  " open file with invalid workflow should throw
+  call AssertThrows(function('struct#open', ['NonExistentWorkflow', {}]),
+        \ 'No such workflow: NonExistentWorkflow')
 endfunction

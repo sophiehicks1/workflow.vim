@@ -11,6 +11,7 @@ let g:tests_failed = 0
 " Test framework initialization
 function! TestFrameworkInit()
   let g:test_results = {}
+  let g:test_debug_messages = []
   let g:current_test_name = ""
   let g:tests_run = 0
   let g:tests_passed = 0
@@ -27,6 +28,15 @@ function! TestFrameworkInit()
     if !isdirectory(g:test_workspace)
       call mkdir(g:test_workspace, 'p')
     endif
+  endif
+
+  " Copy test setup files if needed
+  " (Assumes test setup files are in tests/data/)
+  let l:test_data_dir = "./tests/data/"
+  if isdirectory(l:test_data_dir)
+    let l:copy_source = l:test_data_dir . "*"
+    let l:copy_dest = g:test_workspace
+    let cp_result = system("cp -r " . l:copy_source . " " . l:copy_dest)
   endif
 endfunction
 
@@ -217,6 +227,11 @@ function! AssertDoesNotThrow(command, ...)
   catch
     call TestFail("AssertDoesNotThrow failed: " . message . ". Caught exception: " . v:exception)
   endtry
+endfunction
+
+function! Debug(message)
+  call add(g:test_debug_messages, "DEBUG: " . a:message)
+  echom "DEBUG: " . a:message
 endfunction
 
 " Record a test failure with detailed information
@@ -421,6 +436,17 @@ function! RunTestModule()
         endfor
       endif
     endfor
+  endif
+
+  " Print debug messages if any
+  if len(g:test_debug_messages) > 0
+    echom ""
+    echom "DEBUG MESSAGES:"
+    echom "==============="
+    for msg in g:test_debug_messages
+      echom msg
+    endfor
+    call writefile(g:test_debug_messages, g:test_temp_dir . "/test_debug.log")
   endif
 
   " Note: Cleanup is skipped to avoid system() calls in -e -s mode

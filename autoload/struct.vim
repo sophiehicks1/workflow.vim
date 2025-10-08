@@ -6,6 +6,13 @@ function! s:validate_workflow_config(workflows)
     if !has_key(workflow, 'ext')
       throw 'Workflow "' . name . '" is missing required "ext" property'
     endif
+    " validate template exists and readable if provided
+    if has_key(workflow, 'template')
+      let template_path = simplify(fnamemodify(g:struct_repo_root . '/' . workflow.template, ':p'))
+      if !filereadable(template_path)
+        throw 'Template file not found: ' . template_path
+      endif
+    endif
   endfor
 endfunction
 
@@ -39,20 +46,33 @@ function! s:normalize_config(root, workflows)
   return l:workflows
 endfunction
 
+function! s:setup_template_autocmds(name, workflow)
+  if has_key(a:workflow, 'template')
+    let template_path = simplify(fnamemodify(g:struct_repo_root . '/' . a:workflow.template, ':p'))
+    let au_glob_path = substitute(a:workflow.root . '/*' . '.' . a:workflow.ext, '//', '/', 'g')
+    " Set up autocommand to load template when creating new file in this workflow
+    execute 'augroup struct_template_' . a:name
+    execute 'autocmd!'
+    execute 'autocmd BufNewFile ' . au_glob_path .
+          \ ' 0r ' . template_path
+    execute 'augroup END'
+  endif
+endfunction
+
 function! struct#initialize(root, workflows)
   let g:struct_repo_root = a:root
   call s:validate_repository_root(a:root)
   call s:validate_workflow_config(a:workflows)
   let g:struct_workflows = s:normalize_config(a:root, a:workflows)
+  for [name, workflow] in items(g:struct_workflows)
+    call s:setup_template_autocmds(name, workflow)
+  endfor
 endfunction
 
 function s:find_matching_workflow(filepath)
   let matches = []
   for [type, config] in items(g:struct_workflows)
-    echom type
-    echom config.root
     let root = simplify(fnamemodify(config.root, ':p'))
-    echom root
     if stridx(fnamemodify(a:filepath, ':p'), root) == 0
       call add(matches, {'type': type, 'root': config.root})
     endif
@@ -170,4 +190,14 @@ function! struct#generate_title(workflow, values)
   let title = s:substitute_title_variables(title, parsed, a:values)
   let title = s:clean_up_title(title)
   return title . '.' . ext
+endfunction
+
+function! struct#open(workflow, values)
+  if !has_key(g:struct_workflows, a:workflow)
+    throw 'No such workflow: ' . a:workflow
+  endif
+  let title = struct#generate_title(a:workflow, a:values)
+  let root = g:struct_workflows[a:workflow].root
+  let filepath = simplify(fnamemodify(root . '/' . title, ':p'))
+  call struct#open_path(filepath)
 endfunction
