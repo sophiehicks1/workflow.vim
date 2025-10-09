@@ -87,6 +87,6 @@ function! struct#init#initialize(root, workflows)
   call s:validate_workflow_config(a:workflows)
   let g:struct_workflows = s:normalize_config(a:root, a:workflows)
   for [name, workflow] in items(g:struct_workflows)
-    call struct#templates#apply(name, workflow)
+    call struct#templates#apply(name)
   endfor
 endfunction

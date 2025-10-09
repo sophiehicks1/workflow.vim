@@ -1,3 +1,3 @@
 # Greeting
 
-{{{ return CustomGreeting() }}}
+{{{ return CustomGreeting(a:who) }}}

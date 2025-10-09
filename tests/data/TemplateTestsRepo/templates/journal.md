@@ -1,3 +1,3 @@
-# {{{ return g:struct_context['$title'] }}}
+# {{{ return a:title }}}
 
 #journal

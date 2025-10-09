@@ -24,3 +24,9 @@ function! struct#utils#resolve_workflow(filepath)
   return workflow
 endfunction
 
+function! struct#utils#get_workflow(workflow_name)
+  if !has_key(g:struct_workflows, a:workflow_name)
+    throw 'No such workflow: ' . a:workflow_name
+  endif
+  return g:struct_workflows[a:workflow_name]
+endfunction

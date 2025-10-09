@@ -1,11 +1,11 @@
-function! s:validate_file_extension(workflow, filepath)
+function! s:validate_file_extension(workflow_name, filepath)
+  let expected_ext = struct#utils#get_workflow(a:workflow_name).ext
   " validate that the file extension matches
   let ext = fnamemodify(a:filepath, ':e')
-  let config = g:struct_workflows[a:workflow]
-  if ext !=# config.ext
-    throw 'File matched workflow ' . a:workflow .
+  if ext !=# expected_ext
+    throw 'File matched workflow ' . a:workflow_name .
           \ ', but extension ' . ext . 
-          \ ' does not match expected extension ' . config.ext
+          \ ' does not match expected extension ' . expected_ext
   endif
 endfunction
 
@@ -18,27 +18,27 @@ function! s:safe_edit(filepath)
 endfunction
 
 function! struct#open#open_path(filepath)
-  let workflow = struct#utils#resolve_workflow(a:filepath)
-  call s:validate_file_extension(workflow, a:filepath)
+  let workflow_name = struct#utils#resolve_workflow(a:filepath)
+  call s:validate_file_extension(workflow_name, a:filepath)
   call s:safe_edit(a:filepath)
 endfunction
 
 function! s:substitute_title_variable(title, var, values)
-  let title = copy(a:title)
-  let var_name = substitute(a:var, '?$', '', '')
-  if has_key(a:values, var_name)
-    let title = substitute(title, a:var, a:values[var_name], 'g')
+  let l:title = copy(a:title)
+  let l:var_name = substitute(a:var, '?$', '', '')
+  if has_key(a:values, l:var_name)
+    let l:title = substitute(l:title, a:var, a:values[l:var_name], 'g')
   else
     " throw if variable is not optional (ends with ?)
     if reverse(a:var)[0] !=# '?'
-      throw 'Missing required variable: ' . var_name
+      throw 'Missing required variable: ' . l:var_name
     endif
     " remove optional variable and any preceding punctuation/spaces or
     " surrounding parens
-    let title = substitute(title, '\s*[-_:&+=]*\s*(\' . a:var . '\?)', '', 'g')
-    let title = substitute(title, '\s*[-_:&+=]*\s*\' . a:var . '\?', '', 'g')
+    let l:title = substitute(l:title, '\s*[-_:&+=]*\s*(\' . a:var . '\?)', '', 'g')
+    let l:title = substitute(l:title, '\s*[-_:&+=]*\s*\' . a:var . '\?', '', 'g')
   endif
-  return title
+  return l:title
 endfunction
 
 function! s:substitute_title_variables(title, title_format, values)
@@ -57,9 +57,10 @@ function! s:clean_up_title(title)
   return title
 endfunction
 
-function! struct#open#generate_title(workflow, values)
-  let title_format = g:struct_workflows[a:workflow].title_format
-  let ext = g:struct_workflows[a:workflow].ext
+function! struct#open#generate_title(workflow_name, values)
+  let workflow = struct#utils#get_workflow(a:workflow_name)
+  let title_format = workflow.title_format
+  let ext = workflow.ext
   let title = copy(title_format.format)
   if title_format.has_date
     let title = strftime(title)
@@ -69,13 +70,10 @@ function! struct#open#generate_title(workflow, values)
   return title . '.' . ext
 endfunction
 
-function! struct#open#open(workflow, values)
-  if !has_key(g:struct_workflows, a:workflow)
-    throw 'No such workflow: ' . a:workflow
-  endif
-  let title = struct#open#generate_title(a:workflow, a:values)
-  let root = g:struct_workflows[a:workflow].root
-  let filepath = simplify(fnamemodify(root . '/' . title, ':p'))
+function! struct#open#open(workflow_name, values)
+  let workflow = struct#utils#get_workflow(a:workflow_name)
+  let title = struct#open#generate_title(a:workflow_name, a:values)
+  let filepath = simplify(fnamemodify(workflow.root . '/' . title, ':p'))
   let g:struct_context = a:values
   call struct#open#open_path(filepath)
   unlet g:struct_context

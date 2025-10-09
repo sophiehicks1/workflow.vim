@@ -95,14 +95,14 @@ endfunction
 
 function! TestCustomFunctionInTemplate()
   " Define a custom function to be used in the template
-  function! CustomGreeting()
-    return 'Hello, '. g:struct_context['$who'] .'!'
+  function! CustomGreeting(name)
+    return 'Hello, '. a:name .'!'
   endfunction
 
   call struct#initialize(g:test_workspace . '/TemplateTestsRepo', {
         \ 'Greet': {
         \   'root': 'greet/',
-        \   'ext': 'txt',
+        \   'ext': 'md',
         \   'template': 'templates/greet.md',
         \   'title_format': '%Y-%m-%d $who',
         \ },
@@ -121,8 +121,8 @@ function! TestCustomFunctionInTemplate()
   call AssertEqual(1, &modified, "Buffer should be marked as modified after template expansion")
 
   " Should work with multiple lines
-  function! CustomGreeting()
-    return 'Hello, '. g:struct_context['$who'] . "!\nWelcome to Struct.vim."
+  function! CustomGreeting(name)
+    return 'Hello, '. a:name . "!\nWelcome to Struct.vim."
   endfunction
   call struct#open('Greet', {'$who': 'Alice'})
   let buf_content = getbufline('%', 1, '$')
@@ -141,12 +141,17 @@ function! TestCustomFunctionInTemplate()
 endfunction
 
 function! TestErrorsInTemplateExpansion()
-  " thrown errors prppagate correctly
   call struct#initialize(g:test_workspace . '/TemplateTestsRepo', {
         \ 'ErrorTest': {
         \   'root': 'error_test/',
         \   'ext': 'md',
         \   'template': 'templates/error_test.md',
+        \   'title_format': '%Y-%m-%d',
+        \ },
+        \ 'SyntaxErrorTest': {
+        \   'root': 'syntax_error_test/',
+        \   'ext': 'md',
+        \   'template': 'templates/syntax_error.md',
         \   'title_format': '%Y-%m-%d',
         \ },
         \ })
@@ -160,15 +165,16 @@ function! TestErrorsInTemplateExpansion()
         \ "File '" . bufname('%') . "' should contain the error message from the template")
 
   " syntax error in template isn't silently swallowed
+  let syntax_error_message = 'Vim(call):E116: Invalid arguments for function Foo'
+  let expected_syntax_error_content = ['Error executing template code: ' . syntax_error_message]
+  call struct#open('SyntaxErrorTest', {})
+  let buf_content = getbufline('%', 1, '$')
+  call AssertDeepEqual(expected_syntax_error_content, buf_content,
+        \ "File '" . bufname('%') . "' should contain the syntax error message from the template")
 endfunction
 
-" things to test
-" - functions that throw (errors should propagate)
-"
 " Test default values for missing optional variables
 " - test title setting behaviour
 " - test template behaviour
 " - test template with unset optional variable and no default (default value
 "   for default?)
-
-" FIXME autoload/struct.vim is getting messy... refactor
