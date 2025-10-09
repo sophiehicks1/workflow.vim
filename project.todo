@@ -7,13 +7,26 @@
 [X] function to parse a human friendly title format string, to make a title config
 [X] workflow specific title generation function, with support for dates
 [X] open function that takes title and variables, and calls into generic function
-[X] ! templates for default file content
 
 # file name/title management
 [ ] function to validate filename based on a title config
 [ ] validate generated titles, and throw helpful error messages (e.g. when illegal characters are used in variables)
 
 # file creation
+[ ] ! refactor autoload/struct.vim
+- core should have just user facing public functions
+- initialization and config set up in one file
+- template rendering in one file
+- create and open in one file
+[ ] ! refactor tests to match this
+[ ] ! templates for default file content
+[ ] move from g:struct_context['$var'], to using a:var
+- parse the title_format during workfow normalization, so you can pull it out whenever without rerunning
+- in `struct#execute`
+  - fetch the configured variables
+  - define them as function args
+  - set them from g:struct_context map
+[ ] add support for non-title variables in templates
 
 # file opening
 [ ] validate opened file against title format

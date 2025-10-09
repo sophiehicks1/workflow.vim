@@ -46,6 +46,33 @@ function! s:normalize_config(root, workflows)
   return l:workflows
 endfunction
 
+function! struct#execute(workflow_name, lines)
+  let result = ''
+  try
+    let func_name = 'TemplateFunc' . strftime('%s') . rand()
+    let func_lines = 'function! ' . func_name . "()\n" . a:lines . "\nendfunction"
+    execute func_lines
+    let result = call(func_name, [])
+  catch
+    let result = 'Error executing template code: ' . v:exception
+  finally
+    if exists('*' . func_name)
+      execute 'delfunction! ' . func_name
+    endif
+  endtry
+  return result
+endfunction
+
+function! struct#fill_template(workflow_name)
+  silent! %s/{{{\(.\{-}\)}}}/\=struct#execute(a:workflow_name, submatch(1))/ge
+  if line('$') > 1 || getline(1) !=# ''
+    " mark buffer as modified if content was added
+    setlocal modified
+  else
+    setlocal nomodified
+  endif
+endfunction
+
 function! s:setup_template_autocmds(name, workflow)
   if has_key(a:workflow, 'template')
     let template_path = simplify(fnamemodify(g:struct_repo_root . '/' . a:workflow.template, ':p'))
@@ -54,7 +81,8 @@ function! s:setup_template_autocmds(name, workflow)
     execute 'augroup struct_template_' . a:name
     execute 'autocmd!'
     execute 'autocmd BufNewFile ' . au_glob_path .
-          \ ' 0r ' . template_path
+          \ ' 0r ' . template_path .
+          \ " | call struct#fill_template('" . a:name . "')"
     execute 'augroup END'
   endif
 endfunction
@@ -199,5 +227,7 @@ function! struct#open(workflow, values)
   let title = struct#generate_title(a:workflow, a:values)
   let root = g:struct_workflows[a:workflow].root
   let filepath = simplify(fnamemodify(root . '/' . title, ':p'))
+  let g:struct_context = a:values
   call struct#open_path(filepath)
+  unlet g:struct_context
 endfunction
