@@ -15,7 +15,7 @@
 
 # file creation
 [ ] ! templates for default file content
-[ ] move from g:struct_context['$var'], to using a:var
+[X] move from g:struct_context['$var'], to using a:var
 - parse the title_format during workfow normalization, so you can pull it out whenever without rerunning
 - in `struct#execute`
   - fetch the configured variables
@@ -74,4 +74,6 @@
 - can then move mdpp's `[[` into that, while also adding `#tag` completion as a workflow hook, and `/command` completion in the slash-command plugin
 [ ] MDPP bug: <C-f> doesn't add in the right place when in the middle of some text
 [ ] MDPP bug: multi-line links
+[ ] think about how to incorporate file specific mark-setting hooks (e.g. so I can jump straight to specific sections in my [[Reading]] file)
+- Maybe this is actually an argument in favor of setting a workflow 'glob' instead of a workflow 'root'
 
