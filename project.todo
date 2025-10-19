@@ -8,19 +8,20 @@
 [X] workflow specific title generation function, with support for dates
 [X] open function that takes title and variables, and calls into generic function
 [X] ! refactor autoload/struct.vim
-
-# file name/title management
-[ ] function to validate filename based on a title config
-[ ] validate generated titles, and throw helpful error messages (e.g. when illegal characters are used in variables)
-
-# file creation
-[ ] ! templates for default file content
 [X] move from g:struct_context['$var'], to using a:var
 - parse the title_format during workfow normalization, so you can pull it out whenever without rerunning
 - in `struct#execute`
   - fetch the configured variables
   - define them as function args
   - set them from g:struct_context map
+
+# file name/title management
+[ ] function to validate filename based on a title config
+[ ] validate generated titles, and throw helpful error messages (e.g. when illegal characters are used in variables)
+
+# file creation
+[ ] ! templates for default file content (MVP version of this actually might be
+done? Check...)
 [ ] add support for non-title variables in templates
 
 # file opening
@@ -67,6 +68,7 @@
 [ ] ! configure a wikilinks custom autocomplete for mdpp
 [ ] ! check for mdpp and open.vim dependencies to gate wikilinks support
 [ ] do I want any git integration?
+[ ] Replace obsidian sync with git sync, based on puppygit (or similar) on android
 [ ] do I want to add `/commands` for inserting newly created file links?
 [ ] new plugin similar to open.vim, but for omnicomplete
 - configured with a sequence of matcher/completer pairs
