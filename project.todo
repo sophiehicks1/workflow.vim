@@ -18,6 +18,7 @@
 # file name/title management
 [ ] function to validate filename based on a title config
 [ ] validate generated titles, and throw helpful error messages (e.g. when illegal characters are used in variables)
+[ ] option to use a datestring as the default value of an optional variable in a title (e.g. capture title `%Y-%m-%d $title?` where $title defaults to `%H%M%S`)
 
 # file creation
 [ ] ! templates for default file content (MVP version of this actually might be

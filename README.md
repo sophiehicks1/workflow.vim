@@ -1,7 +1,43 @@
+# WARNING
+
+This branch is a complete rewrite of this plugin from the ground up,
+incorporating a bunch of concepts I learned through a year or so of using the
+Obsidian, LogSeq and other knowledge management systems.
+
+The general concept of the plugin will remain the same, but with some
+significant changes
+
+- Everything is designed to be relative to a single notes repo root
+- The configuration format has changed to enable much more flexibility
+- The new system will have much more sophisticated support for links / backlinks
+- Other cool stuff is coming
+
+That said, very little actually works yet and there's no public API yet, so you
+have to invoke internal functions directly to do anything. Here's what works at
+the time of writing:
+
+- `:call struct#open(<workflow>, <args>)`: this is roughly equivalent to the old
+  `:Workflow` ex command. "Args" is an object with `$variable` mapped to
+  variable values
+- `:call struct#open#open_path('path/relative/to/repo/root')`: This is a low
+  level function that infers the correct workflow from the path, and opens the
+  given file as part of that workflow, skipping title generation but running
+  everything else.
+
+Documentation for this will come later (for real... my github is full of shit I
+never finished, but this is different because I actually _use_ it every day, so
+I have motivation!). If you want to play with it in the meantime, look in
+`./tests` to see how it all works.
+
+Keeping the rest of the README.md as it was for vibes and to explain the general
+concept (even though all the details in it are wrong)
+
+---
+
 # TL;DR;
 
 workflow.vim is a highly customizable note taking plugin for structured note taking workflows. It's
-a little like a "Build your own Evernote" kit for vim.
+a little like a "Build your own Obsidian" kit for vim.
 
 # workflow.vim
 
