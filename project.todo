@@ -18,21 +18,19 @@
 [X] ! finish off the wikilinks autocomplete in mdpp
 [X] MDPP bug: <C-f> doesn't add in the right place when in the middle of some text
 [X] MDPP bug: multi-line links
+[X] add support for non-title variables in templates
+[X] ! default variable values
+- validate variable config structure
+- validate no collisions (e.g. optional in title and config don't match, default
+  set for non-optional variable) in init.vim
+- apply default values in struct#open#open
+[X] ! test using a datestring as the default value of an optional variable in a title (e.g. capture title `%Y-%m-%d $title?` where $title defaults to `%H%M%S`)
 
 # file name/title management
 [ ] function to validate filename based on a title config
 [ ] validate generated titles, and throw helpful error messages (e.g. when illegal characters are used in variables)
 
 # file creation
-[X] add support for non-title variables in templates
-[ ] ! default variable values
-- validate variable structure in init.vim
-- enable setting of variable defaults in init
-- update initialization tests
-- validate no collisions (e.g. optional in title and config don't match, default
-  set for non-optional variable) in init.vim
-- apply default values in struct#open#open
-[ ] ! test using a datestring as the default value of an optional variable in a title (e.g. capture title `%Y-%m-%d $title?` where $title defaults to `%H%M%S`)
 
 # file opening
 [ ] validate opened file against title format

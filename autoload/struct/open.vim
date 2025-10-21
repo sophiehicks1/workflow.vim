@@ -81,9 +81,21 @@ function! s:normalize_value_names(values)
   return normalized
 endfunction
 
+function! s:apply_default_values(workflow_name, values)
+  let workflow_vars = struct#utils#workflow_variables(a:workflow_name)
+  let values = copy(a:values)
+  for [var_name, var_config] in items(workflow_vars)
+    if !has_key(values, var_name) && has_key(var_config, 'default')
+      let values[var_name] = var_config.default
+    endif
+  endfor
+  return values
+endfunction
+
 function! struct#open#open(workflow_name, values)
   let root = struct#utils#workflow_root(a:workflow_name)
   let values = s:normalize_value_names(a:values)
+  let values = s:apply_default_values(a:workflow_name, values)
   let title = struct#open#generate_title(a:workflow_name, values)
   let filepath = simplify(fnamemodify(root . '/' . title, ':p'))
   let g:struct_context = values

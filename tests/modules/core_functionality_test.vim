@@ -171,3 +171,24 @@ function! TestFileOpenWithFilenameGeneration()
   call AssertBufferName(l:expected_filename2,
         \ 'struct#open works with variable names with or without $ prefix')
 endfunction
+
+function! TestFileOpenWithDefaultVariableInTitleFormat()
+  call struct#initialize(g:test_workspace . '/RepoRoot', {
+        \ 'Capture': {
+        \   'root': 'capture/',
+        \   'ext': 'md',
+        \   'title_format': '%Y-%m-%d - $title?',
+        \   'variables': {
+        \     '$title': {'default': '%H%M%S'},
+        \   },
+        \ },
+        \ })
+
+  " open file with default variable value
+  call struct#open('Capture', {})
+  let l:expected_filename = strftime('%Y-%m-%d - %H%M%S.md')
+  call AssertBufferName(l:expected_filename,
+        \ 'struct#open uses default variable value in title format when variable is missing')
+  call AssertBufferInDirectory(g:test_workspace . '/RepoRoot/capture',
+        \ 'struct#open opens the file in the correct directory when using default variable value')
+endfunction
