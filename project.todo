@@ -14,16 +14,25 @@
   - fetch the configured variables
   - define them as function args
   - set them from g:struct_context map
+[X] ! templates for default file content (MVP version of this actually might be done? Check...)
+[X] ! finish off the wikilinks autocomplete in mdpp
+[X] MDPP bug: <C-f> doesn't add in the right place when in the middle of some text
+[X] MDPP bug: multi-line links
 
 # file name/title management
 [ ] function to validate filename based on a title config
 [ ] validate generated titles, and throw helpful error messages (e.g. when illegal characters are used in variables)
-[ ] option to use a datestring as the default value of an optional variable in a title (e.g. capture title `%Y-%m-%d $title?` where $title defaults to `%H%M%S`)
 
 # file creation
-[ ] ! templates for default file content (MVP version of this actually might be
-done? Check...)
-[ ] add support for non-title variables in templates
+[X] add support for non-title variables in templates
+[ ] ! default variable values
+- validate variable structure in init.vim
+- enable setting of variable defaults in init
+- update initialization tests
+- validate no collisions (e.g. optional in title and config don't match, default
+  set for non-optional variable) in init.vim
+- apply default values in struct#open#open
+[ ] ! test using a datestring as the default value of an optional variable in a title (e.g. capture title `%Y-%m-%d $title?` where $title defaults to `%H%M%S`)
 
 # file opening
 [ ] validate opened file against title format
@@ -36,12 +45,13 @@ done? Check...)
 [ ] workflow specific aliases
 
 # ex commands
-[ ] ! workflow specific create/open command with name sugar
+[X] ! workflow specific create/open command with name sugar
 [ ] workflow specific grep command
-[ ] ! workflow specific open/create command (without name sugar), expects relative path
+[ ] ! workflow specific open/create command (without name sugar), expects path relative to root
 [ ] ! tabcomplete for relative path workflow specific open (backed by shell commands)
 [ ] file rename command, that updates backlinks
 [ ] load backlinks to *list command (with option to filter to specific workflows?)
+[ ] `:WithDate [yesterday|last week|<date>] <Workflow> <args>` command to run a workflow command with a simulated date
 
 # config and setup
 [ ] ! initialize repo root and workflows from json file, so it's shared with scripts (should be easy if we limit to strings and ints only, which I think is the plan anyway)
@@ -65,18 +75,15 @@ done? Check...)
 [ ] think about how to implement a cntr integration
 [ ] go through '/home/sophie/Documents/Stuff/capture/2025-09-22 notes on my notes system.md' to make sure I can implement everything
 [ ] ! configure a custom wikilinks resolver for mdpp
-[ ] ! finish off the wikilinks autocomplete in mdpp
 [ ] ! configure a wikilinks custom autocomplete for mdpp
 [ ] ! check for mdpp and open.vim dependencies to gate wikilinks support
-[ ] do I want any git integration?
-[ ] Replace obsidian sync with git sync, based on puppygit (or similar) on android
+[ ] do I want any git integration _in vim_?
+[ ] ! Replace obsidian sync with git sync, based on puppygit (or similar) on android
 [ ] do I want to add `/commands` for inserting newly created file links?
 [ ] new plugin similar to open.vim, but for omnicomplete
 - configured with a sequence of matcher/completer pairs
 - omnicomplete function creates a context object, and passes that through the pairs in sequence
 - can then move mdpp's `[[` into that, while also adding `#tag` completion as a workflow hook, and `/command` completion in the slash-command plugin
-[ ] MDPP bug: <C-f> doesn't add in the right place when in the middle of some text
-[ ] MDPP bug: multi-line links
 [ ] think about how to incorporate file specific mark-setting hooks (e.g. so I can jump straight to specific sections in my [[Reading]] file)
 - Maybe this is actually an argument in favor of setting a workflow 'glob' instead of a workflow 'root'
 

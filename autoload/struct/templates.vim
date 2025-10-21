@@ -1,14 +1,13 @@
 function! struct#templates#execute(workflow_name, lines)
-  let l:workflow = struct#utils#get_workflow(a:workflow_name)
-  let l:variables = copy(workflow.title_format.variables)
+  let l:variable_names = keys(struct#utils#workflow_variables(a:workflow_name))
   " extract variables and pass them in as a: variables
   let result = ''
   try
     let func_name = 'TemplateFunc' . strftime('%s') . rand()
-    let func_vars = '(' . join(map(l:variables, {_, v -> substitute(v, '[?$]', '', 'g')}), ', ') . ')'
+    let func_vars = '(' . join(l:variable_names, ', ') . ')'
     let func_lines = 'function! ' . func_name . func_vars . "\n" . a:lines . "\nendfunction"
     execute func_lines
-    let call_vars = map(l:variables, {_, v -> g:struct_context['$' . v]})
+    let call_vars = map(l:variable_names, {_, v -> g:struct_context[v]})
     let result = call(func_name, call_vars)
   catch
     let result = 'Error executing template code: ' . v:exception
@@ -30,11 +29,12 @@ function! struct#templates#render(workflow_name)
   endif
 endfunction
 
-function! struct#templates#apply(workflow_name)
-  let l:workflow = struct#utils#get_workflow(a:workflow_name)
-  if has_key(l:workflow, 'template')
-    let template_path = simplify(fnamemodify(g:struct_repo_root . '/' . l:workflow.template, ':p'))
-    let au_glob_path = substitute(l:workflow.root . '/*' . '.' . l:workflow.ext, '//', '/', 'g')
+function! struct#templates#setup_augroup(workflow_name)
+  if struct#utils#workflow_has_template(a:workflow_name)
+    let template_path = struct#utils#workflow_template_path(a:workflow_name)
+    let root = struct#utils#workflow_root(a:workflow_name)
+    let ext = struct#utils#workflow_ext(a:workflow_name)
+    let au_glob_path = substitute(root . '/*' . '.' . ext, '//', '/', 'g')
     " Set up autocommand to load template when creating new file in this workflow
     execute 'augroup struct_template_' . a:workflow_name
     execute 'autocmd!'

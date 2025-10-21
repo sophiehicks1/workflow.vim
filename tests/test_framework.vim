@@ -192,6 +192,9 @@ function! AssertExists(varname, ...)
 endfunction
 
 " Assert that an exception is thrown
+" command: string command to execute or function reference
+" pattern: string pattern to match against exception message
+" message(optional): custom message on failure
 function! AssertThrows(command, pattern, ...)
   let default_message = "Expected exception matching " . string(a:pattern) . " from command: " . string(a:command)
   let message = a:0 > 0 ? a:1 . ' (' . default_message . ')' : default_message

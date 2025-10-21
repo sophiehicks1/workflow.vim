@@ -24,9 +24,60 @@ function! struct#utils#resolve_workflow(filepath)
   return workflow
 endfunction
 
-function! struct#utils#get_workflow(workflow_name)
+function! s:get_workflow(workflow_name)
   if !has_key(g:struct_workflows, a:workflow_name)
     throw 'No such workflow: ' . a:workflow_name
   endif
   return g:struct_workflows[a:workflow_name]
+endfunction
+
+" Public functions to query workflows
+" DO NOT MODIFY WORKFLOW OBJECTS HERE - RETURN COPIES ONLY
+" You can only modify workflows on startup during struct#initialize
+
+function! struct#utils#workflow_variables(workflow_name)
+  let l:workflow = s:get_workflow(a:workflow_name)
+  return copy(workflow.title_format.variables)
+endfunction
+
+function! struct#utils#workflow_ext(workflow_name)
+  let l:workflow = s:get_workflow(a:workflow_name)
+  return copy(l:workflow.ext)
+endfunction
+
+function! struct#utils#workflow_title_format(workflow_name)
+  let l:workflow = s:get_workflow(a:workflow_name)
+  return copy(l:workflow.title_format)
+endfunction
+
+function! struct#utils#workflow_root(workflow_name)
+  let l:workflow = s:get_workflow(a:workflow_name)
+  return copy(l:workflow.root)
+endfunction
+
+function! struct#utils#workflow_has_template(workflow_name)
+  let l:workflow = s:get_workflow(a:workflow_name)
+  return has_key(l:workflow, 'template')
+endfunction
+
+function! struct#utils#workflow_template_path(workflow_name)
+  let l:workflow = s:get_workflow(a:workflow_name)
+  if has_key(l:workflow, 'template')
+    return simplify(fnamemodify(g:struct_repo_root . '/' . l:workflow.template, ':p'))
+  endif
+endfunction
+
+" returns: { 'variable_name': { 'optional': v:true|v:false } }
+function! struct#utils#workflow_variables(workflow_name)
+  let l:workflow = s:get_workflow(a:workflow_name)
+  return copy(l:workflow.variables)
+endfunction
+
+function! struct#utils#is_variable_optional(workflow_name, variable_name)
+  let l:workflow = s:get_workflow(a:workflow_name)
+  if has_key(l:workflow.variables, a:variable_name)
+    return l:workflow.variables[a:variable_name].optional
+  else
+    throw 'Variable ' . a:variable_name . ' not defined in workflow ' . a:workflow_name
+  endif
 endfunction
