@@ -85,61 +85,54 @@ function! struct#init#parse_title_format(title_format)
         \ }
 endfunction
 
-" FIXME update this comment
-" Before this, workflow has a normalized title_formats with keys ('format',
-" 'variables', 'has_date') and optionally has a list of non-title variables.
-" After this, workflow always has a 'variables' key, which contains a variables
-" object, mapping names to variable config. Variable config is {'optional':
-" Boolean}
-" i.e. this maps from:
+function! s:normalize_variable_names(variables)
+  let variables = deepcopy(a:variables)
+  " Remove '$' from variable names in variables dictionary
+  for var_name in keys(variables)
+    let clean_var_name = substitute(var_name, '[$]', '', 'g')
+    if clean_var_name !=# var_name
+      let variables[clean_var_name] = variables[var_name]
+      call remove(variables, var_name)
+    endif
+  endfor
+  return variables
+endfunction
 
-" {
-"   'title_format': {'format': String, 'variables': ['$variable'], 'has_date': Boolean}
-"   'variables': {'other?':
-"
-" }
-" to this
+function! s:merge_var_name_into_variables(var_name, variables)
+  let optional = reverse(a:var_name)[0] ==# '?'
+  let clean_var_name = substitute(a:var_name, '[$?]', '', 'g')
+  let variables = deepcopy(a:variables)
+  if has_key(variables, clean_var_name)
+    " If variable already exists, ensure optional is consistent
+    if optional 
+          \ && has_key(variables[clean_var_name], 'optional')
+          \ && (variables[clean_var_name].optional ==# v:false || variables[clean_var_name].optional ==# 0)
+      throw 'Conflict in variable configuration for "' . clean_var_name
+            \ . '" between title_format and variables config'
+    elseif !optional 
+          \ && has_key(variables[clean_var_name], 'optional')
+          \ && (variables[clean_var_name].optional ==# v:true || variables[clean_var_name].optional ==# 1)
+      throw 'Conflict in variable configuration for "' . clean_var_name
+            \ . '" between title_format and variables config'
+    endif
+    let variables[clean_var_name] = extend(variables[clean_var_name], { 'optional': optional })
+  else
+    let variables[clean_var_name] = { 'optional': optional }
+  endif
+  return variables
+endfunction
 
-" {
-"   'title_format': {'format': String, 'has_date': Boolean},
-"   'variables': {'variable': {'optional': v:false}, 'other': {'optional': v:true}}
-" }
-" FIXME REFACTOR THIS IS HUGE
+" Merges the variables pulled from title_format into the variables dictionary,
+" ensuring that any optional settings are consistent between the two sources.
 function! s:normalize_variables(workflow)
   let variables = {}
   if has_key(a:workflow, 'variables')
-    let variables = deepcopy(a:workflow.variables)
-    " Remove '$' from variable names in variables dictionary
-    for var_name in keys(variables)
-      let clean_var_name = substitute(var_name, '[$]', '', 'g')
-      if clean_var_name !=# var_name
-        let variables[clean_var_name] = variables[var_name]
-        call remove(variables, var_name)
-      endif
-    endfor
+    let variables = s:normalize_variable_names(a:workflow.variables)
   endif
   " Add title format variables to variables dictionary
   let title_var_strings = copy(a:workflow.title_format.variables)
   for var_name in title_var_strings
-    let optional = reverse(var_name)[0] ==# '?'
-    let clean_var_name = substitute(var_name, '[$?]', '', 'g')
-    if has_key(variables, clean_var_name)
-      " If variable already exists, ensure optional is consistent
-      if optional 
-            \ && has_key(variables[clean_var_name], 'optional')
-            \ && (variables[clean_var_name].optional ==# v:false || variables[clean_var_name].optional ==# 0)
-        throw 'Conflict in variable configuration for "' . clean_var_name
-              \ . '" between title_format and variables config'
-      elseif !optional 
-            \ && has_key(variables[clean_var_name], 'optional')
-            \ && (variables[clean_var_name].optional ==# v:true || variables[clean_var_name].optional ==# 1)
-        throw 'Conflict in variable configuration for "' . clean_var_name
-              \ . '" between title_format and variables config'
-      endif
-      let variables[clean_var_name] = extend(variables[clean_var_name], { 'optional': optional })
-    else
-      let variables[clean_var_name] = { 'optional': optional }
-    endif
+    let variables = s:merge_var_name_into_variables(var_name, variables)
   endfor
   let l:workflow = deepcopy(a:workflow)
   let l:workflow.variables = variables

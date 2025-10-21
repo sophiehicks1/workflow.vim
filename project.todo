@@ -25,6 +25,7 @@
   set for non-optional variable) in init.vim
 - apply default values in struct#open#open
 [X] ! test using a datestring as the default value of an optional variable in a title (e.g. capture title `%Y-%m-%d $title?` where $title defaults to `%H%M%S`)
+[X] ! workflow specific create/open command with name sugar
 
 # file name/title management
 [ ] function to validate filename based on a title config
@@ -43,7 +44,6 @@
 [ ] workflow specific aliases
 
 # ex commands
-[X] ! workflow specific create/open command with name sugar
 [ ] workflow specific grep command
 [ ] ! workflow specific open/create command (without name sugar), expects path relative to root
 [ ] ! tabcomplete for relative path workflow specific open (backed by shell commands)
