@@ -17,6 +17,8 @@ function! s:safe_edit(filepath)
   execute 'edit' fnameescape(a:filepath)
 endfunction
 
+" Public for testing, but not for general use. This is the low-level internal
+" open function that all other functions call into.
 function! struct#open#open_path(filepath)
   let workflow_name = struct#utils#resolve_workflow(a:filepath)
   call s:validate_file_extension(workflow_name, a:filepath)
@@ -101,6 +103,32 @@ function! s:open_path_with_context(filepath, workflow, values)
   unlet g:struct_context
 endfunction
 
+function! struct#open#open_existing_relative_to_repo_root(relative_path)
+  let repo_root = struct#utils#repo_root()
+  return s:open_path_relative_to_root(a:relative_path, repo_root)
+endfunction
+
+function! struct#open#open_existing_relative_to_workflow_root(workflow_name, relative_path)
+  let workflow_root = struct#utils#workflow_root(a:workflow_name)
+  return s:open_path_relative_to_root(a:relative_path, workflow_root)
+endfunction
+
+function! s:open_path_relative_to_root(relative_path, root)
+  let filepath = simplify(fnamemodify(a:root . '/' . a:relative_path, ':p'))
+  " validate that the file is within the given root
+  if stridx(filepath . '/', a:root) != 0
+    throw 'File is outside root directory: ' . a:relative_path
+  endif
+  " validate that the file exists
+  if !filereadable(filepath)
+    throw 'No such file: ' . a:relative_path
+  endif
+  call struct#open#open_path(filepath)
+endfunction
+
+" Public function to open a file for a given workflow, generating the
+" title based on the provided values. This is mostly used for creating new
+" files.
 function! struct#open#open(workflow_name, values)
   let root = struct#utils#workflow_root(a:workflow_name)
   let values = s:normalize_value_names(a:values)

@@ -71,17 +71,44 @@ function! s:open_workflow_command(workflow_name, ...)
   call struct#open(a:workflow_name, values)
 endfunction
 
-function! s:create_completion_function(workflow_name)
-  let func_name = 'StructAutogen_complete_' . a:workflow_name
+function! s:workflow_create_completion_function(workflow_name)
+  let func_name = 'StructAutogen_complete_' . a:workflow_name . '_Create'
   execute 'function! ' . func_name . '(ArgLead, CmdLine, CursorPos) abort'
         \ . "\n  let variables = struct#utils#workflow_variables('" . a:workflow_name . "')"
         \ . "\n  let completions = map(keys(variables), '\"--\" . v:val')"
         \ . "\n  return filter(completions, 'v:val =~ \"^\" . a:ArgLead')"
         \ . "\nendfunction"
+  return func_name
 endfunction
 
+function! s:workflow_open_completion_function(workflow_name)
+  let func_name = 'StructAutogen_complete_' . a:workflow_name . '_Open'
+  execute 'function! ' . func_name . '(ArgLead, CmdLine, CursorPos) abort'
+        \ . "\n  let workflow_root = struct#utils#workflow_root('" . a:workflow_name . "')"
+        \ . "\n  let files = systemlist('find ' . workflow_root . ' -type f | sort')"
+        \ . "\n  let files = map(files, 'substitute(v:val, \"^\" . workflow_root, \"\", \"\")')"
+        \ . "\n  return filter(files, 'v:val =~ \"^\" . a:ArgLead')"
+        \ . "\nendfunction"
+  return func_name
+endfunction
+
+
 function! struct#commands#initialize_workflow_commands(workflow_name)
-  call s:create_completion_function(a:workflow_name)
-  execute 'command! -complete=customlist,StructAutogen_complete_'.a:workflow_name .' -nargs=* ' . a:workflow_name .
+  let create_compl_func = s:workflow_create_completion_function(a:workflow_name)
+  execute 'command! -complete=customlist,' . create_compl_func . ' -nargs=* ' . a:workflow_name .
         \ ' call <SID>open_workflow_command("' . a:workflow_name . '", <f-args>)'
+  let open_compl_func = s:workflow_open_completion_function(a:workflow_name)
+  execute 'command! -complete=customlist,' . open_compl_func . ' -nargs=1 ' .
+        \ a:workflow_name . 'Open call struct#open#open_existing_relative_to_workflow_root("' . a:workflow_name . '", <f-args>)'
+endfunction
+
+function! s:complete_relative_repo_root(ArgLead, CmdLine, CursorPos)
+  let repo_root = struct#utils#repo_root()
+  let files = systemlist('find ' . repo_root . ' -type f | sort')
+  let files = map(files, 'substitute(v:val, "^" . repo_root . "/", "", "")')
+  return filter(files, 'v:val =~ "^" . a:ArgLead')
+endfunction
+
+function! struct#commands#initialize_generic_commands()
+  command! -nargs=1 -complete=customlist,s:complete_relative_repo_root WorkflowOpen call struct#open#open_existing_relative_to_repo_root(<f-args>)
 endfunction

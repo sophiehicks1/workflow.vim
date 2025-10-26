@@ -201,6 +201,7 @@ function! struct#init#initialize(root, workflows)
   let g:struct_workflows = s:normalize_config(g:struct_repo_root, a:workflows)
   call s:validate_normalized_config(g:struct_repo_root, g:struct_workflows)
 
+  call struct#commands#initialize_generic_commands()
   for [name, workflow] in items(g:struct_workflows)
     call struct#templates#setup_augroup(name)
     call struct#commands#initialize_workflow_commands(name)

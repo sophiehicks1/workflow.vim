@@ -1,4 +1,8 @@
 # DONE
+[X] workflow specific open/create command (without name sugar), expects path relative to workflow root
+[X] tabcomplete for relative path workflow specific open
+[X] ! generic open/create command (without name sugar), expects path relative to repo root
+[X] ! tabcomplete for generic specific open
 [X] initialize function that lets you create workflows with a repository root
 [X] basic workflow validation
 [X] repository root validation
@@ -69,9 +73,7 @@ more robust.
 [ ] workflow specific aliases
 
 # ex commands
-[ ] workflow specific grep command
-[ ] ! workflow specific open/create command (without name sugar), expects path relative to root
-[ ] ! tabcomplete for relative path workflow specific open (backed by shell commands)
+[ ] test workflow resolution in `:WorkflowOpen` command
 [ ] file rename command, that updates backlinks
 [ ] load backlinks to *list command (with option to filter to specific workflows?)
 [ ] `:WithDate [yesterday|last week|<date>] <Workflow> <args>` command to run a workflow command with a simulated date
@@ -80,7 +82,7 @@ more robust.
 [ ] ! initialize repo root and workflows from json file, so it's shared with scripts (should be easy if we limit to strings and ints only, which I think is the plan anyway)
 
 # shell commands that filter input file list, or filter all files (optionally scoped to a specific repo)
-[ ] ! fuzzy name match
+[ ] fuzzy name match (what are the semantics here?)
 [ ] file content grep on repo or workflow
 [ ] search/filter by tag (filters input (or all files, if no input) to those containing given tag)
 [ ] search/filter by text (filters input (or all files, if no input) to those matching given text)

@@ -101,7 +101,7 @@ function! TestCommandCompletion()
         \   },
         \ })
 
-  call Assert(exists('*StructAutogen_complete_Task') == 1,
+  call Assert(exists('*StructAutogen_complete_Task_Create') == 1,
         \ "Completion function for ':Task' command should be defined")
   if exists('*StructAutogen_complete_Task')
     let completions = StructAutogen_complete_Task('--', '--', 2)
@@ -113,5 +113,85 @@ function! TestCommandCompletion()
           \ "Completion function for ':Task' command returned incorrect completions for --t")
 
 
+  endif
+endfunction
+
+function! s:create_file(relative_path, content)
+  call mkdir(fnamemodify(a:relative_path, ':h'), 'p')
+  let filepath = g:test_workspace . '/RepoRoot/' . a:relative_path
+  call mkdir(fnamemodify(filepath, ':h'), 'p')
+  call writefile(a:content, filepath)
+endfunction
+
+function! TestGenericOpenCommand()
+  call struct#initialize(g:test_workspace . '/RepoRoot', {
+        \ 'Weekly': {
+        \   'root': 'weekly',
+        \   'ext': 'md',
+        \   'title_format': '%Y-W%V',
+        \ },
+        \ })
+
+  call Assert(exists(':WorkflowOpen') == 2, "Command ':WorkflowOpen' should be defined")
+
+  " generic open command accepts file path relative to repo root
+  if exists(':WorkflowOpen')
+    let relative_path = 'weekly/' . strftime('%Y-W%V') . '.md'
+    call s:create_file(relative_path, ['# Weekly Note'])
+    execute 'WorkflowOpen ' . relative_path
+    call AssertEqual(g:test_workspace . '/RepoRoot/' . relative_path, bufname('%'),
+          \ "File opened by ':WorkflowOpen' command is incorrect")
+    call delete(relative_path)
+  endif
+endfunction
+
+function! TestGenericOpenCommandOutsideRepoRoot()
+  call struct#initialize(g:test_workspace . '/RepoRoot', {
+        \ 'Page': {
+        \   'root': './',
+        \   'ext': 'md',
+        \ },
+        \ })
+  " generic open command throws error for file outside repo root
+  call AssertThrows('WorkflowOpen ../outside.md',
+        \ 'outside root',
+        \ "Command ':WorkflowOpen' should throw an error when file is outside repo root")
+
+endfunction
+
+function! TestGenericOpenCommandNonExistentFile()
+  call struct#initialize(g:test_workspace . '/RepoRoot', {
+        \ 'Weekly': {
+        \   'root': 'weekly',
+        \   'ext': 'md',
+        \   'title_format': '%Y-W%V',
+        \ },
+        \ })
+  " generic open command throws error for non-existent file
+  call AssertThrows('WorkflowOpen weekly/nonexistent.md',
+        \ 'No such file',
+        \ "Command ':WorkflowOpen' should throw an error when file does not exist")
+endfunction
+
+" TODO when workflow autocmds are supported, validate that the right
+" autocmds run (i.e. workflow resolution works)
+
+function! TestWorkflowSpecificCommand()
+  call struct#initialize(g:test_workspace . '/RepoRoot', {
+        \ 'Page': {
+        \   'root': './',
+        \   'ext': 'md',
+        \   'title_format': '$title',
+        \ },
+        \ })
+
+  call Assert(exists(':PageOpen') == 2, "Command ':PageOpen' should be defined")
+  if exists(':PageOpen')
+    let relative_path = 'My First Page.md'
+    call s:create_file(relative_path, ['# My First Page'])
+    PageOpen ./My First Page.md
+    call AssertEqual(g:test_workspace . '/RepoRoot/My First Page.md', bufname('%'),
+          \ "File opened by ':PageOpen' command is incorrect")
+    call delete(relative_path)
   endif
 endfunction

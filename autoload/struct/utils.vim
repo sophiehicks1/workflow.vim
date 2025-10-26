@@ -35,6 +35,10 @@ endfunction
 " DO NOT MODIFY WORKFLOW OBJECTS HERE - RETURN COPIES ONLY
 " You can only modify workflows on startup during struct#initialize
 
+function! struct#utils#repo_root()
+  return copy(g:struct_repo_root)
+endfunction
+
 function! struct#utils#workflow_ext(workflow_name)
   let l:workflow = s:get_workflow(a:workflow_name)
   return copy(l:workflow.ext)
