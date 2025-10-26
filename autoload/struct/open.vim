@@ -63,12 +63,15 @@ function! struct#open#generate_title(workflow_name, values)
   let title_format = struct#utils#workflow_title_format(a:workflow_name)
   let variables = struct#utils#workflow_variables(a:workflow_name)
   let ext = struct#utils#workflow_ext(a:workflow_name)
+
   let title = copy(title_format.format)
-  let title = s:substitute_title_variables(title, title_format, variables, a:values)
+  let values = s:apply_default_values(a:workflow_name, a:values)
+  let title = s:substitute_title_variables(title, title_format, variables, values)
   if title_format.has_date
     let title = strftime(title)
   endif
   let title = s:clean_up_title(title)
+
   return title . '.' . ext
 endfunction
 
@@ -92,13 +95,16 @@ function! s:apply_default_values(workflow_name, values)
   return values
 endfunction
 
+function! s:open_path_with_context(filepath, workflow, values)
+  let g:struct_context = s:apply_default_values(a:workflow, a:values)
+  call struct#open#open_path(a:filepath)
+  unlet g:struct_context
+endfunction
+
 function! struct#open#open(workflow_name, values)
   let root = struct#utils#workflow_root(a:workflow_name)
   let values = s:normalize_value_names(a:values)
-  let values = s:apply_default_values(a:workflow_name, values)
   let title = struct#open#generate_title(a:workflow_name, values)
   let filepath = simplify(fnamemodify(root . '/' . title, ':p'))
-  let g:struct_context = values
-  call struct#open#open_path(filepath)
-  unlet g:struct_context
+  call s:open_path_with_context(filepath, a:workflow_name, values)
 endfunction

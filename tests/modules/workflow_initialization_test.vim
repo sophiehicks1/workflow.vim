@@ -22,16 +22,16 @@ function! TestWorkflowInitializationErrors()
   call mkdir(g:test_workspace . '/RepoRoot', 'p')
 
   " file extension and root are both mandatory
-  let l:args = [g:test_workspace . '/RepoRoot', {'NoRoot': {'ext': 'md'}}]
-  call AssertThrows(function('struct#initialize', l:args), 'NoRoot.*root')
+  call AssertThrows(function('struct#initialize', [g:test_workspace . '/RepoRoot', {'NoRoot': {'ext': 'md'}}]),
+        \ 'NoRoot.*root')
 
-  let l:args = [g:test_workspace . '/RepoRoot', {'NoExt': {'root': 'notes/'}}]
-  call AssertThrows(function('struct#initialize', l:args), 'NoExt.*ext')
+  call AssertThrows(function('struct#initialize', [g:test_workspace . '/RepoRoot', {'NoExt': {'root': 'notes/'}}]),
+        \ 'NoExt.*ext')
 endfunction
 
 function! TestVariableValidation()
   " variables must be an dictionary mapping keys like '$foo' or 'bar' to configs if provided
-  let l:args = [g:test_workspace . '/RepoRoot', {
+  call AssertDoesNotThrow(function('struct#initialize', [g:test_workspace . '/RepoRoot', {
         \   'GoodVars': {
         \     'root': 'notes/',
         \     'ext': 'md',
@@ -41,75 +41,68 @@ function! TestVariableValidation()
         \       'simple_var': {},
         \     },
         \   },
-        \ }]
-  call AssertDoesNotThrow(function('struct#initialize', l:args),
+        \ }]),
         \ 'GoodVars with valid variables should not throw an error')
 
   " variables must be a dictionary
-  let l:args = [g:test_workspace . '/RepoRoot', {
+  call AssertThrows(function('struct#initialize', [g:test_workspace . '/RepoRoot', {
         \   'BadVars': {
         \     'root': 'notes/',
         \     'ext': 'md',
         \     'variables': 'not-a-dictionary',
         \   },
-        \ }]
-  call AssertThrows(function('struct#initialize', l:args), 'BadVars.*variables.*dictionary')
+        \ }]), 'BadVars.*variables.*dictionary')
 
   " variable names must be strings
-  let l:args = [g:test_workspace . '/RepoRoot', {
+  call AssertThrows(function('struct#initialize', [g:test_workspace . '/RepoRoot', {
         \   'BadVarName': {
         \     'root': 'notes/',
         \     'ext': 'md',
         \     'variables': {123: {}},
         \   },
-        \ }]
-  call AssertThrows(function('struct#initialize', l:args), 'BadVarName.*invalid variable.*123')
+        \ }]), 'BadVarName.*invalid variable.*123')
 
   " variables must be an dictionary, not an array
-  let l:args = [g:test_workspace . '/RepoRoot', {
+  call AssertThrows(function('struct#initialize', [g:test_workspace . '/RepoRoot', {
         \   'BadVarFormat': {
         \     'root': 'notes/',
         \     'ext': 'md',
         \     'variables': ['valid_var', 'another_var'],
         \   },
-        \ }]
-  call AssertThrows(function('struct#initialize', l:args), 'BadVarFormat.*variables.*dictionary')
+        \ }]), 'BadVarFormat.*variables.*dictionary')
 
   " variables should only contain alphanumeric characters, underscores, $ and ?
-  let l:args = [g:test_workspace . '/RepoRoot', {
+  call AssertThrows(function('struct#initialize', [g:test_workspace . '/RepoRoot', {
         \   'InvalidVarChars': {
         \     'root': 'notes/',
         \     'ext': 'md',
         \     'variables': {'in*valid': {}},
         \   },
-        \ }]
-  call AssertThrows(function('struct#initialize', l:args), 'InvalidVarChars.*invalid variable.*in\*valid')
+        \ }]), 'InvalidVarChars.*invalid variable.*in\*valid')
 endfunction
 
 function! TestVariableConfigStructure()
   " variables must be dictionaries if provided
-  let l:args = [g:test_workspace . '/RepoRoot', {
+  call AssertThrows(function('struct#initialize', [g:test_workspace . '/RepoRoot', {
         \   'BadVarConfig': {
         \     'root': 'notes/',
         \     'ext': 'md',
         \     'variables': {'valid_var': 'not-a-dictionary'},
         \   },
-        \ }]
-  call AssertThrows(function('struct#initialize', l:args), 'BadVarConfig.*variable.*dictionary')
+        \ }]), 'BadVarConfig.*variable.*dictionary')
 
   " variable config dictionaries can be empty
-  let l:args = [g:test_workspace . '/RepoRoot', {
+  call AssertDoesNotThrow(function('struct#initialize', [g:test_workspace . '/RepoRoot', {
         \   'EmptyVarConfig': {
         \     'root': 'notes/',
         \     'ext': 'md',
         \     'variables': {'valid_var': {}},
         \   },
-        \ }]
-  call AssertDoesNotThrow(function('struct#initialize', l:args),
+        \ }]),
         \ 'EmptyVarConfig with empty variable config should not throw an error')
 
   " variable config can have 'default' and 'optional' keys
-  let l:args = [g:test_workspace . '/RepoRoot', {
+  call AssertDoesNotThrow(function('struct#initialize', [g:test_workspace . '/RepoRoot', {
         \   'FullVarConfig': {
         \     'root': 'notes/',
         \     'ext': 'md',
@@ -118,12 +111,11 @@ function! TestVariableConfigStructure()
         \       'optional_var': {'optional': 1},
         \     },
         \   },
-        \ }]
-  call AssertDoesNotThrow(function('struct#initialize', l:args),
+        \ }]),
         \ 'FullVarConfig with valid variable config should not throw an error')
 
   " variable config cannot have unknown keys
-  let l:args = [g:test_workspace . '/RepoRoot', {
+  call AssertThrows(function('struct#initialize', [g:test_workspace . '/RepoRoot', {
         \   'UnknownVarConfig': {
         \     'root': 'notes/',
         \     'ext': 'md',
@@ -131,11 +123,10 @@ function! TestVariableConfigStructure()
         \       'var_with_unknown_key': {'unknown_key': 'value'},
         \     },
         \   },
-        \ }]
-  call AssertThrows(function('struct#initialize', l:args), 'UnknownVarConfig.*invalid key.*unknown_key')
+        \ }]), 'UnknownVarConfig.*invalid key.*unknown_key')
 
   " variable 'optional' key must be a boolean 0 or 1
-  let l:args = [g:test_workspace . '/RepoRoot', {
+  call AssertThrows(function('struct#initialize', [g:test_workspace . '/RepoRoot', {
         \   'InvalidOptionalVar': {
         \     'root': 'notes/',
         \     'ext': 'md',
@@ -143,29 +134,27 @@ function! TestVariableConfigStructure()
         \       'var_with_invalid_optional': {'optional': 'yes'},
         \     },
         \   },
-        \ }]
-  call AssertThrows(function('struct#initialize', l:args), 'InvalidOptionalVar.*optional.*Boolean')
+        \ }]), 'InvalidOptionalVar.*optional.*Boolean')
 endfunction
 
 function! TestRepositoryRootValidation()
   " repository root must be an absolute path
-  let l:args = ['relative/path', {'Page': {'root': 'notes/', 'ext': 'md'}}]
-  call AssertThrows(function('struct#initialize', l:args), 'Repository root.*absolute path')
+  call AssertThrows(function('struct#initialize', ['relative/path', {'Page': {'root': 'notes/', 'ext': 'md'}}]),
+        \ 'Repository root.*absolute path')
   " should not create directories when given a path that fails validation
   call AssertDirNotExists('relative/path')
 
   " repository root is created if it does not exist
   call AssertDirNotExists(g:test_workspace . '/RepoRootNew')
-  let l:args = [g:test_workspace . '/RepoRootNew', {'Page': {'root': 'notes/', 'ext': 'md'}}]
-  call struct#initialize(l:args[0], l:args[1])
+  call struct#initialize(g:test_workspace . '/RepoRootNew', {'Page': {'root': 'notes/', 'ext': 'md'}})
   call AssertDirExists(g:test_workspace . '/RepoRootNew')
 
   " repository root must be a directory
   let not_a_dir = g:test_workspace . '/RepoRoot/notes/Page.md'
   call mkdir(g:test_workspace . '/RepoRoot/notes', 'p')
   call writefile(['# A note'], not_a_dir)
-  let l:args = [not_a_dir, {'Page': {'root': 'notes/', 'ext': 'md'}}]
-  call AssertThrows(function('struct#initialize', l:args), 'Repository root.*directory')
+  call AssertThrows(function('struct#initialize', [not_a_dir, {'Page': {'root': 'notes/', 'ext': 'md'}}]),
+        \ 'Repository root.*directory')
 endfunction
 
 function! TestTitleFormatParsing()
@@ -212,9 +201,25 @@ function! TestTitleFormatValidation()
   call AssertDeepEqual({'format': static_title, 'variables': [], 'has_date': 0},
         \ struct#init#parse_title_format(static_title),
         \ 'struct#init#parse_title_format correctly parses static title formats')
+
+  " title formats must contain static text or at least one non-optional
+  " variable, optional variable with default or date component
+  call AssertThrows(
+        \ function('struct#initialize', [
+        \   g:test_workspace . '/RepoRoot',
+        \   {
+        \     'EmptyTitle': {
+        \       'root': 'empty/',
+        \       'ext': 'md',
+        \       'title_format': '$optional_var?',
+        \     },
+        \   }
+        \ ]),
+        \ 'Title format must contain static text, a non-optional variable, a variable with default '
+        \ . 'or a date component')
 endfunction
 
-function! TestVariableNormalization()
+function! TestVariableNormalizationWithOnlyTitleVariables()
   " workflows with only title_format variables are normalized correctly
   call struct#initialize(g:test_workspace . '/RepoRoot', {
         \   'Meeting': {
@@ -229,7 +234,9 @@ function! TestVariableNormalization()
         \ }
   call AssertDeepEqual(expected_variables, g:struct_workflows['Meeting'].variables,
         \ 'Workflows with only title_format variables are normalized correctly')
+endfunction
 
+function! TestVariableNormalizationWithMixedVariables()
   " workflows with both title_format and additional variables are normalized
   " correctly
   call struct#initialize(g:test_workspace . '/RepoRoot', {
@@ -247,7 +254,9 @@ function! TestVariableNormalization()
         \ }
   call AssertDeepEqual(expected_variables_proj, g:struct_workflows['Project'].variables,
         \ 'Workflows with both title_format and additional variables are normalized correctly')
+endfunction
 
+function! TestVariableNormalizationWithNoVariables()
   " workflows with no variables have an empty variables object
   call struct#initialize(g:test_workspace . '/RepoRoot', {
         \   'Index': {
@@ -258,21 +267,9 @@ function! TestVariableNormalization()
         \ })
   call AssertDeepEqual({}, g:struct_workflows['Index'].variables,
         \ 'Workflows with no variables have an empty variables object')
+endfunction
 
-  " optional variables in titles are correctly identified
-  call struct#initialize(g:test_workspace . '/RepoRoot', {
-        \   'Journal': {
-        \     'root': 'journal/',
-        \     'ext': 'md',
-        \     'title_format': '%Y-%m-%d $title?',
-        \   },
-        \ })
-  let expected_variables_journal = {
-        \ 'title': {'optional': 1},
-        \ }
-  call AssertDeepEqual(expected_variables_journal, g:struct_workflows['Journal'].variables,
-        \ 'Optional variables in titles are correctly identified')
-
+function! TestVariableNormalizationDollarSyntaxIsOptional()
   " $ in variable names is optional in the variables list
   call struct#initialize(g:test_workspace . '/RepoRoot', {
         \   'Task': {
@@ -288,7 +285,9 @@ function! TestVariableNormalization()
         \ }
   call AssertDeepEqual(expected_variables_task, g:struct_workflows['Task'].variables,
         \ '$ in variable names is optional in the variables list')
+endfunction
 
+function! TestVariableNormalizationWithConflicts()
   " conflicts between title_format and variables are caught and thrown
   call AssertDoesNotThrow(
         \ function('struct#initialize', [
@@ -329,7 +328,9 @@ function! TestVariableNormalization()
         \   }
         \ ]),
         \ 'Conflict in variable configuration for "date" between title_format and variables config')
+endfunction
 
+function! TestVariableDefaultMerging()
   " if a default is set for a variable that is optional in the title_format,
   " and optional is not set in the variables config, the configs are merged
   call struct#initialize(g:test_workspace . '/RepoRoot', {
@@ -345,4 +346,19 @@ function! TestVariableNormalization()
         \ }
   call AssertDeepEqual(expected_variables_reminder, g:struct_workflows['Reminder'].variables,
         \ 'Default set for optional title_format variable merges correctly with variables config')
+endfunction
+
+function! TestWorkflowRootValidation()
+  " workflow root must be a subdirectory of the repository root
+  call AssertThrows(
+        \ function('struct#initialize', [
+        \   g:test_workspace . '/RepoRoot',
+        \   {
+        \     'OutsideRoot': {
+        \       'root': '../outside/',
+        \       'ext': 'md',
+        \     },
+        \   }
+        \ ]),
+        \ 'Workflow "OutsideRoot" root ".*" is outside repository root ".*"')
 endfunction

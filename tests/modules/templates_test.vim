@@ -94,11 +94,6 @@ function! TestTimeInTemplate()
 endfunction
 
 function! TestCustomFunctionInTemplate()
-  " Define a custom function to be used in the template
-  function! CustomGreeting(name)
-    return 'Hello, '. a:name .'!'
-  endfunction
-
   call struct#initialize(g:test_workspace . '/TemplateTestsRepo', {
         \ 'Greet': {
         \   'root': 'greet/',
@@ -107,6 +102,11 @@ function! TestCustomFunctionInTemplate()
         \   'title_format': '%Y-%m-%d $who',
         \ },
         \ })
+
+  " Define a custom function to be used in the template
+  function! CustomGreeting(name)
+    return 'Hello, '. a:name .'!'
+  endfunction
 
   " Open a new greeting file with the custom function variable
   call struct#open('Greet', {'$who': 'World'})
@@ -120,11 +120,26 @@ function! TestCustomFunctionInTemplate()
         \ "File '" . bufname('%') . "' does not match expected content with custom function")
   call AssertEqual(1, &modified, "Buffer should be marked as modified after template expansion")
 
+  delfunction! CustomGreeting
+endfunction
+
+function! TestCustomFunctionMultiLineReturn()
+  call struct#initialize(g:test_workspace . '/TemplateTestsRepo', {
+        \ 'Greet': {
+        \   'root': 'greet/',
+        \   'ext': 'md',
+        \   'template': 'templates/greet.md',
+        \   'title_format': '%Y-%m-%d $who',
+        \ },
+        \ })
+
   " Should work with multiple lines
   function! CustomGreeting(name)
     return 'Hello, '. a:name . "!\nWelcome to Struct.vim."
   endfunction
+
   call struct#open('Greet', {'$who': 'Alice'})
+
   let buf_content = getbufline('%', 1, '$')
   let expected_content = [
         \ '# Greeting',
@@ -132,6 +147,7 @@ function! TestCustomFunctionInTemplate()
         \ 'Hello, Alice!',
         \ 'Welcome to Struct.vim.',
         \ ]
+
   call AssertDeepEqual(expected_content, buf_content,
         \ "File '" . bufname('%') . "' does not match expected content with multiple lines from custom function")
   call AssertEqual(1, &modified, "Buffer should be marked as modified after template expansion")
@@ -173,8 +189,123 @@ function! TestErrorsInTemplateExpansion()
         \ "File '" . bufname('%') . "' should contain the syntax error message from the template")
 endfunction
 
-" Test default values for missing optional variables
-" - test title setting behaviour
-" - test template behaviour
-" - test template with unset optional variable and no default (default value
-"   for default?)
+function! TestTemplateWithDefaultValues()
+  call struct#initialize(g:test_workspace . '/TemplateTestsRepo', {
+        \ 'Page': {
+        \   'root': 'pages/',
+        \   'ext': 'md',
+        \   'template': 'templates/defaults.md',
+        \   'title_format': '$title?',
+        \   'variables': {
+        \     'title': { 'default': 'Untitled' },
+        \   },
+        \ },
+        \ })
+
+  " Open a new file without providing the optional variable
+  call struct#open('Page', {})
+
+  let buf_content = getbufline('%', 1, '$')
+  let expected_content = [
+        \ '# Untitled',
+        \ ]
+
+  call AssertDeepEqual(expected_content, buf_content,
+        \ "File '" . bufname('%') . "' does not match expected content with default variable value")
+
+  call AssertEqual(1, &modified, "Buffer should be marked as modified after template expansion")
+endfunction
+
+function! TestMultiLineExpansionInTemplate()
+  call struct#initialize(g:test_workspace . '/TemplateTestsRepo', {
+        \ 'MultiLine': {
+        \   'root': 'multiline/',
+        \   'ext': 'md',
+        \   'template': 'templates/multiline.md',
+        \   'title_format': '%Y-%m-%d $title?',
+        \   'variables': {
+        \     'title': { 'default': '' },
+        \   },
+        \ },
+        \ })
+
+  " Open a new file that uses a variable which expands to multiple lines
+  call struct#open('MultiLine', {})
+  let buf_content = getbufline('%', 1, '$')
+  let expected_content = [
+        \ '',
+        \ ]
+  call AssertDeepEqual(expected_content, buf_content,
+        \ "File '" . bufname('%') . "' does not match expected content with multi-line expansion")
+endfunction
+
+function! TestOptionalVariablesCanBeTestedUsingExists()
+  call struct#initialize(g:test_workspace . '/TemplateTestsRepo', {
+        \ 'OptionalVars': {
+        \   'root': 'optional_vars/',
+        \   'ext': 'md',
+        \   'template': 'templates/optional_vars.md',
+        \   'title_format': '%Y%m%d%H%M%S',
+        \   'variables': {
+        \     'optionalHeading': { 'optional': v:true },
+        \   },
+        \ },
+        \ })
+
+  " Open a new file without providing the optional variable
+  call struct#open('OptionalVars', {})
+  let buf_content = getbufline('%', 1, '$')
+  let expected_content = [
+        \ 'Default content',
+        \ ]
+  call AssertDeepEqual(expected_content, buf_content,
+        \ "File '" . bufname('%') . "' does not match expected content without optional variable")
+
+  " Clean up buffer
+  execute 'bwipeout! ' . bufname('%')
+
+  call struct#open('OptionalVars', {'$optionalHeading': 'Custom Heading'})
+  let buf_content_with_var = getbufline('%', 1, '$')
+  let expected_content_with_var = [
+        \ '# Custom Heading',
+        \ '',
+        \ 'Default content',
+        \ ]
+  call AssertDeepEqual(expected_content_with_var, buf_content_with_var,
+        \ "File '" . bufname('%') . "' does not match expected content with optional variable provided")
+endfunction
+
+
+" Template expansion that starts and ends with newlines (i.e. there's nothing
+" on the same line as the {{{...}}}) should result in those newlines being
+" removed when the expansion returns v:null
+function! TestTemplateExpansionWithSurroundingNewlines()
+  call struct#initialize(g:test_workspace . '/TemplateTestsRepo', {
+        \ 'ExpansionNewlines': {
+        \   'root': 'expansion_newlines/',
+        \   'ext': 'md',
+        \   'template': 'templates/expansion_newlines.md',
+        \   'title_format': 'StaticTitle',
+        \ },
+        \ })
+
+  " Open a new file that uses a template with surrounding newlines
+  call struct#open('ExpansionNewlines', {})
+  let buf_content = getbufline('%', 1, '$')
+  let expected_content = [
+        \ 'When template expansion code is on its own line, that line is removed if the',
+        \ 'expansion returns null, but preserved if the expansion returns content',
+        \ '',
+        \ 'before null expansion',
+        \ 'after null expansion',
+        \ '',
+        \ 'before contentful expansion',
+        \ 'content from expansion',
+        \ 'after contentful expansion',
+        \ '',
+        \ 'Inline template expansion code like "" that returns null',
+        \ 'has no newlines removed.',
+        \ ]
+  call AssertDeepEqual(expected_content, buf_content,
+        \ "File '" . bufname('%') . "' does not match expected content with surrounding newlines handled correctly")
+endfunction

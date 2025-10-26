@@ -35,11 +35,6 @@ endfunction
 " DO NOT MODIFY WORKFLOW OBJECTS HERE - RETURN COPIES ONLY
 " You can only modify workflows on startup during struct#initialize
 
-function! struct#utils#workflow_variables(workflow_name)
-  let l:workflow = s:get_workflow(a:workflow_name)
-  return copy(workflow.title_format.variables)
-endfunction
-
 function! struct#utils#workflow_ext(workflow_name)
   let l:workflow = s:get_workflow(a:workflow_name)
   return copy(l:workflow.ext)
@@ -67,6 +62,7 @@ function! struct#utils#workflow_template_path(workflow_name)
   endif
 endfunction
 
+" FIXME: change this so that it only returns the names of the variables (so that internal structure of the variable config is hidden)
 " returns: { 'variable_name': { 'optional': v:true|v:false } }
 function! struct#utils#workflow_variables(workflow_name)
   let l:workflow = s:get_workflow(a:workflow_name)

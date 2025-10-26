@@ -137,7 +137,6 @@ for module_file in $TEST_MODULE_FILES; do
   echo "source tests/test_framework.vim" >> "$vimrc"
   echo "source $module_file" >> "$vimrc"
 
-
   # Run the test module with vim
   vim_cmd="vim -e -s -u $vimrc --noplugin"
   vim_cmd="$vim_cmd -c 'call RunTestModule()'"

@@ -122,6 +122,18 @@ function! s:merge_var_name_into_variables(var_name, variables)
   return variables
 endfunction
 
+" FIXME This is only necessary because we're not using the
+" struct#utils#is_variable_optional function everywhere. FIX THAT (and remove
+" this).
+function! s:ensure_variables_have_optional_key(variables)
+  for [var_name, var_config] in items(a:variables)
+    if !has_key(var_config, 'optional')
+      let a:variables[var_name].optional = v:false
+    endif
+  endfor
+  return a:variables
+endfunction
+
 " Merges the variables pulled from title_format into the variables dictionary,
 " ensuring that any optional settings are consistent between the two sources.
 function! s:normalize_variables(workflow)
@@ -135,7 +147,7 @@ function! s:normalize_variables(workflow)
     let variables = s:merge_var_name_into_variables(var_name, variables)
   endfor
   let l:workflow = deepcopy(a:workflow)
-  let l:workflow.variables = variables
+  let l:workflow.variables = s:ensure_variables_have_optional_key(variables)
   unlet l:workflow.title_format.variables
   return l:workflow
 endfunction
@@ -160,11 +172,34 @@ function! s:normalize_config(root, workflows)
   return l:workflows
 endfunction
 
+function! s:validate_normalized_config(root, workflows)
+  for [name, workflow] in items(a:workflows)
+    " Validate root is within repository root
+    if stridx(workflow.root . '/', a:root . '/') != 0
+      throw 'Workflow "' . name . '" root "' . workflow.root . '" is outside repository root "' . a:root . '"'
+    endif
+    " Validate title with no options set produces a valid title
+    let mandatory_vars = {}
+    for [var_name, var_config] in items(workflow.variables)
+      if !get(var_config, 'optional')
+        let mandatory_vars[var_name] = 'testvalue'
+      endif
+    endfor
+    let test_title = struct#open#generate_title(name, mandatory_vars)
+    let test_title = fnamemodify(test_title, ':t:e')
+    if test_title ==# ''
+      throw 'Workflow "' . name . '" produces empty title with no variables set. Title format '
+            \ . 'must contain static text, a non-optional variable, a variable with default or a date component.'
+    endif
+  endfor
+endfunction
+
 function! struct#init#initialize(root, workflows)
   let g:struct_repo_root = expand(a:root)
   call s:validate_repository_root(g:struct_repo_root)
   call s:validate_workflow_config(a:workflows)
   let g:struct_workflows = s:normalize_config(g:struct_repo_root, a:workflows)
+  call s:validate_normalized_config(g:struct_repo_root, g:struct_workflows)
 
   for [name, workflow] in items(g:struct_workflows)
     call struct#templates#setup_augroup(name)

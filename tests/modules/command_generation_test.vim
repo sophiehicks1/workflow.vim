@@ -18,17 +18,12 @@ function! TestBasicCommandGeneration()
         \ "Command ':Daily' should throw an error when unexpected arguments are provided")
 endfunction
 
-function! TestCommandWithTwoVariables()
+function! TestCommandWithTwoMandatoryVariables()
   call struct#initialize(g:test_workspace . '/RepoRoot', {
         \   'Project': {
         \     'root': 'projects/',
         \     'ext': 'txt',
         \     'title_format': '$client - $project',
-        \   },
-        \   'Meeting': {
-        \     'root': 'meeting/',
-        \     'ext': 'md',
-        \     'title_format': '$subject - $company?',
         \   },
         \ })
 
@@ -41,7 +36,16 @@ function! TestCommandWithTwoVariables()
   endif
   call AssertThrows('Project --client Acme', 'Missing mandatory variable: --project',
         \ "Command ':Project' should throw an error when mandatory variable is missing")
+endfunction
 
+function! TestCommandWithMandatoryAndOptionalVariables()
+  call struct#initialize(g:test_workspace . '/RepoRoot', {
+        \   'Meeting': {
+        \     'root': 'meeting/',
+        \     'ext': 'md',
+        \     'title_format': '$subject - $company?',
+        \   },
+        \ })
   " Test command with one mandatory and one optional variable
   call Assert(exists(':Meeting') == 2, "Command ':Meeting' should be defined")
   if exists(':Meeting')
@@ -52,6 +56,16 @@ function! TestCommandWithTwoVariables()
     call AssertEqual(g:test_workspace . '/RepoRoot/meeting/Quarterly Review - Globex.md', bufname('%'),
           \ "File opened by ':Meeting' command with both variables is incorrect")
   endif
+endfunction
+
+function! TestCommandWithUnexpectedVariable()
+  call struct#initialize(g:test_workspace . '/RepoRoot', {
+        \   'Project': {
+        \     'root': 'projects/',
+        \     'ext': 'txt',
+        \     'title_format': '$client - $project',
+        \   },
+        \ })
 
   " Test unexpected variable
   call AssertThrows('Project --client Acme --project Website --extra Var', 'Unexpected variable: --extra',
