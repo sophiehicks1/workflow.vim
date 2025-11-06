@@ -87,11 +87,15 @@ function! s:workflow_open_completion_function(workflow_name)
         \ . "\n  let workflow_root = struct#utils#workflow_root('" . a:workflow_name . "')"
         \ . "\n  let files = systemlist('find ' . workflow_root . ' -type f | sort')"
         \ . "\n  let files = map(files, 'substitute(v:val, \"^\" . workflow_root, \"\", \"\")')"
-        \ . "\n  return filter(files, 'v:val =~ \"^\" . a:ArgLead')"
+        \ . "\n  let pattern = ''"
+        \ . "\n  for char in split(a:ArgLead, '\\zs')"
+        \ . "\n    let pattern .= char . '.*'"
+        \ . "\n  endfor"
+        \ . "\n  let pattern = pattern . '\\c'"
+        \ . "\n  return filter(files, 'v:val =~ pattern')"
         \ . "\nendfunction"
   return func_name
 endfunction
-
 
 function! struct#commands#initialize_workflow_commands(workflow_name)
   let create_compl_func = s:workflow_create_completion_function(a:workflow_name)
@@ -106,7 +110,12 @@ function! s:complete_relative_repo_root(ArgLead, CmdLine, CursorPos)
   let repo_root = struct#utils#repo_root()
   let files = systemlist('find ' . repo_root . ' -type f | sort')
   let files = map(files, 'substitute(v:val, "^" . repo_root . "/", "", "")')
-  return filter(files, 'v:val =~ "^" . a:ArgLead')
+  let l:pattern = ''
+  for l:char in split(a:ArgLead, '\zs')
+    let l:pattern .= l:char . '.*'
+  endfor
+  let l:pattern = l:pattern . '\c'
+  return filter(files, 'v:val =~ "^" . l:pattern')
 endfunction
 
 function! struct#commands#initialize_generic_commands()

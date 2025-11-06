@@ -31,46 +31,24 @@
 [X] ! test using a datestring as the default value of an optional variable in a title (e.g. capture title `%Y-%m-%d $title?` where $title defaults to `%H%M%S`)
 [X] ! workflow specific create/open command with name sugar
 
-Notes for extracting links with bash scripts
-- Extracting links from all files using grep -Pro is pretty much instant
-- single line links is pretty easy using Perl style regex (need perl style for lazy repeat `*?`)
-- Can't handle multiline links that way, but can handle a single line split by
-  searching for partial links on consecutive lines (i.e.
-  grep -Pro '^<second-half>|<first-half>$|<whole-link>') and adding -n (for line numbers)
-  * That way, we can post process the results to combine consecutive
-    first/second matching into a single file
-  * Here's the wiki links version
-    + `grep -rnPo '^[^\[\]]*?\]\]|\[\[[^\]]*?$|\[\[[^\]]*?\]\]'`
-    + other link types are a little more complex, but totally manageable with a
-      similar approach
-- Should probably use babashka or similar for the post processing portion
-- Would be nice to find a way to only handle links once per pipe, and not
-  duplicate this code across scripts... or cache them or something.
-- rejecting quoted links is going to be harder...
-
-Another approach would be having an autocmd on save that updates a sqlite db,
-and a background reindexing process within vim. I actually like that more...
-because then you can share MDPP code which will be (a) tested, and (b) MUCH
-more robust.
-- simple scan that compares the updated timestamp or hash of file contents or
-  something between repo and the DB
-- only need to reindex the files that are out of date
-- Would probably need to rewrite the entire links thing to operate on files
-  instead of current buffer, but you could do it like how the DOM stuff is
-  done. Probably even in the same pass as Dom is done
-- Although, there's not much code that depends on the current buffer...
-  * two uses of line('$') and getline(), which is just iterating through all lines
-    in a file (which could be replaced with a line_provider type deal)
-  * One use each of raw getline() and line('$'), which could also likely be replaced
-  * One use of line('$') and getline() in a s:getLineSafe() helper, which could
-    also probably be replaced
+# Next steps
+- Telescope integration
+- Try migrating logic from workflow.vim to a line scanner, and getting copilot
+  to migrate it to a lua script
 
 # hooks
 [ ] execute on open hooks
+usecases:
+- onload: 'normal! GA' for "quick edit" files like Dot
 [ ] execute on create hooks
 [ ] workflow specific autocmds
 [ ] workflow specific mappings
 [ ] workflow specific aliases
+- onload: 'TA': 'the author' for Gist
+
+# Built in telescope integration
+[ ] ! new picker that does file text search across a path built based on the config
+[ ] ! new picker that does file name search across a path built based on the config
 
 # ex commands
 [ ] test workflow resolution in `:WorkflowOpen` command

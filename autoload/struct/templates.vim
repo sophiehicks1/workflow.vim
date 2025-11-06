@@ -58,13 +58,13 @@ function! s:perform_block_expansion(workflow_name)
   " broken into pieces for clarity
   let pattern = '^' . '{{{\(' . '\_.' . '\{-}' . '\)}}}' . '\n\ze\_.'
   let replacement = '\=struct#templates#execute(a:workflow_name, submatch(1), v:false)'
-  execute 'silent! %s/' . pattern . '/' . replacement . '/ge'
+  execute 'silent! %s/' . pattern . '/' . replacement . '/e'
 endfunction
 
 function! s:perform_inline_expansion(workflow_name)
   let pattern = '{{{\(' . '\_.' . '\{-}' . '\)}}}'
   let replacement = '\=struct#templates#execute(a:workflow_name, submatch(1), v:true)'
-  execute 'silent! %s/' . pattern . '/' . replacement . '/ge'
+  execute 'silent! %s/' . pattern . '/' . replacement . '/e'
 endfunction
 
 function! s:set_modified()
