@@ -31,6 +31,31 @@ function! s:get_workflow(workflow_name)
   return g:struct_workflows[a:workflow_name]
 endfunction
 
+" Public functions for path conversions
+
+function! struct#utils#to_relative_path(full_path)
+  let repo_root = simplify(fnamemodify(g:struct_repo_root, ':p'))
+  let abs_full_path = simplify(fnamemodify(a:full_path, ':p'))
+  if stridx(abs_full_path, repo_root) == 0
+    return abs_full_path[len(repo_root) :]
+  else
+    " Path is outside repo root, return as is
+    return a:full_path
+  endif
+endfunction
+
+function! struct#utils#from_relative_path(rel_path)
+  let repo_root = simplify(fnamemodify(g:struct_repo_root, ':p'))
+  return simplify(fnamemodify(repo_root . '/' . a:rel_path, ':p'))
+endfunction
+
+function! struct#utils#resolve_wiki_link(wiki_link_target)
+  let full_path_without_ext = struct#utils#from_relative_path(a:wiki_link_target)
+  let workflow_name = struct#utils#resolve_workflow(full_path_without_ext)
+  let ext = struct#utils#workflow_ext(workflow_name)
+  return a:wiki_link_target . '.' . ext
+endfunction
+
 " Public functions to query workflows
 " DO NOT MODIFY WORKFLOW OBJECTS HERE - RETURN COPIES ONLY
 " You can only modify workflows on startup during struct#initialize

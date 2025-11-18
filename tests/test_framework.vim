@@ -233,8 +233,12 @@ function! AssertDoesNotThrow(command, ...)
 endfunction
 
 function! Debug(message)
-  call add(g:test_debug_messages, "DEBUG: " . a:message)
-  echom "DEBUG: " . a:message
+  let message = a:message
+  if type(a:message) != type('')
+    let message = "DEBUG: " . string(a:message)
+  endif
+  call add(g:test_debug_messages, message)
+  echom message
 endfunction
 
 " Record a test failure with detailed information

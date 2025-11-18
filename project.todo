@@ -33,8 +33,21 @@
 
 # Next steps
 - Telescope integration
-- Try migrating logic from workflow.vim to a line scanner, and getting copilot
-  to migrate it to a lua script
+- /capture equivalent... here's a proof-of-feasibility:
+
+function! InteractiveCapture()
+  let args = input('Capture: ')
+  execute 'let values = ' . args
+  let title = struct#open#generate_title('Capture', values)
+  let old_t = getreg('t')
+  let @t = '[[capture/' . title . ']]'
+  call feedkeys("\"tP", 'nx')
+  let @t = old_t
+  split
+  call struct#open('Capture', values)
+endfunction
+
+iabbrev &capture& <Esc>:call InteractiveCapture()<CR>
 
 # hooks
 [ ] execute on open hooks
