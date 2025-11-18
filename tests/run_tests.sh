@@ -137,8 +137,11 @@ for module_file in $TEST_MODULE_FILES; do
   echo "source tests/test_framework.vim" >> "$vimrc"
   echo "source $module_file" >> "$vimrc"
 
+  # find the normal config location
+  CONFIG="$(nvim --headless -c "echo \$MYVIMRC" -c "qall" 2>&1 | tail -n 1)"
+
   # Run the test module with vim
-  vim_cmd="vim -e -s -u $vimrc --noplugin"
+  vim_cmd="nvim -es -u $CONFIG -c 'source $vimrc'"
   vim_cmd="$vim_cmd -c 'call RunTestModule()'"
   vim_cmd="$vim_cmd -c 'qall!'"
 
