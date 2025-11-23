@@ -31,23 +31,16 @@
 [X] ! test using a datestring as the default value of an optional variable in a title (e.g. capture title `%Y-%m-%d $title?` where $title defaults to `%H%M%S`)
 [X] ! workflow specific create/open command with name sugar
 
-# Next steps
-- Telescope integration
-- /capture equivalent... here's a proof-of-feasibility:
-
-function! InteractiveCapture()
-  let args = input('Capture: ')
-  execute 'let values = ' . args
-  let title = struct#open#generate_title('Capture', values)
-  let old_t = getreg('t')
-  let @t = '[[capture/' . title . ']]'
-  call feedkeys("\"tP", 'nx')
-  let @t = old_t
-  split
-  call struct#open('Capture', values)
-endfunction
-
-iabbrev &capture& <Esc>:call InteractiveCapture()<CR>
+# Bugs
+[ ] `:PageOpen` tab complete lists everything (i.e. not just ./ files, but
+./capture/ and ./whatever/ files too). We should change the semantics to only
+list files in the given workflow, and exclude files in workflows with a nested
+root.
+[ ] `[[` autocomplete is just kinda annoying, and I want it to be better. This
+is worth putting some serious thought into before starting. It's unlikely
+there's a simple approach I'm going to come up with that will just magically
+maie it not suck, because of the constraints of vim's user-defined complete
+semantics, so it may need to be a _far_ more home grown system.
 
 # hooks
 [ ] execute on open hooks
