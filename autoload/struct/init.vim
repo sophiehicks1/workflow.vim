@@ -195,15 +195,20 @@ function! s:validate_normalized_config(root, workflows)
 endfunction
 
 function! struct#init#initialize(root, workflows)
+  " Validate and normalize configuration
   let g:struct_repo_root = expand(a:root)
   call s:validate_repository_root(g:struct_repo_root)
   call s:validate_workflow_config(a:workflows)
   let g:struct_workflows = s:normalize_config(g:struct_repo_root, a:workflows)
   call s:validate_normalized_config(g:struct_repo_root, g:struct_workflows)
 
+  " Initialize user commands and templates
   call struct#commands#initialize_generic_commands()
   for [name, workflow] in items(g:struct_workflows)
     call struct#templates#setup_augroup(name)
     call struct#commands#initialize_workflow_commands(name)
   endfor
+
+  " Initialize metadata subsystem
+  call struct#metadata#initialize()
 endfunction
