@@ -1,18 +1,3 @@
-function! TestRegisteringVimlIndexer()
-  " Define a sample indexer
-  function! SampleIndexer()
-      return {'metadata': [{'title': 'Sample Title', 'author': 'Sample Author'}]}
-  endfunction
-
-  " Register the sample indexer
-  call struct#metadata#register_viml_indexer('sample', function('SampleIndexer'))
-
-  " Verify that the indexer is registered
-  let indexers = struct#metadata#get_viml_indexers()
-  call Assert(has_key(indexers, 'sample'), "Indexer 'sample' should be registered")
-  call AssertEqual(indexers['sample'], function('SampleIndexer'))
-endfunction
-
 function! TestMetadataJobStateInitialization()
   if exists("g:workflow_metadata_jobstate_dir")
     unlet g:workflow_metadata_jobstate_dir
@@ -174,12 +159,262 @@ function! TestLockCollisionCanContinueWithContinueIsTrue()
   call struct#metadata#cleanup_job('job2')
 endfunction
 
+function! TestRegisteringVimlIndexer()
+  call struct#initialize(g:test_workspace . '/MetadataTestRepo', {
+        \ 'Page': {'root': 'notes/', 'ext': 'md'},
+        \ 'Task': {'root': 'tasks/', 'ext': 'txt'},
+        \ })
+
+  " Define a sample indexer
+  function! SampleIndexer()
+    return {'metadata': [{'title': 'Sample Title', 'author': 'Sample Author'}]}
+  endfunction
+
+  " Use a different name each time, so that the test won't pass because of
+  " leftover state from a previous run
+  let indexer_name = 'sample_' . string(localtime())
+
+  " Register the sample indexer and verify
+  call struct#metadata#register_viml_indexer(indexer_name, function('SampleIndexer'))
+  call Assert(has_key(g:workflow_metadata_indexers, indexer_name), 
+        \ 'Indexer "' . indexer_name . '" should be registered')
+
+  " Registering duplicate indexer name should warn and overwrite
+  function! AnotherSampleIndexer()
+    return {'metadata': [{'title': 'Another Title'}]}
+  endfunction
+
+  call struct#metadata#register_viml_indexer(indexer_name, function('AnotherSampleIndexer'))
+  let expected_warning = 'Indexer with name "' . indexer_name . '" is already registered. Overwriting.'
+  call AssertEqual(g:workflow_metadata_indexers[indexer_name], function('AnotherSampleIndexer'),
+        \ 'Indexer "' . indexer_name . '" should be overwritten with the new function')
+endfunction
+
+" Define an indexer that extracts all the words from a buffer
+function! s:WordIndexer()
+  let l:words = []
+
+  for lnum in range(1, line('$'))
+    let line = getline(lnum)
+    let l:line_words = split(line, '\W\+')
+    for word in l:line_words
+      call extend(l:words, [{'word':word, 'line':lnum}])
+    endfor
+  endfor
+  return {'words': l:words}
+endfunction
+
+function! TestRunningASingleVimlIndexer()
+  call struct#initialize(g:test_workspace . '/MetadataTestRepo', {
+        \ 'Page': {'root': 'notes/', 'ext': 'md'},
+        \ 'Task': {'root': 'tasks/', 'ext': 'txt'},
+        \ })
+
+  " Register the WordIndexer
+  call struct#metadata#register_viml_indexer('word_indexer', function('s:WordIndexer'))
+
+  " Open a test buffer
+  Page NoteWithWords
+  call append(0, 'foo bar')
+  call append(1, 'baz')
+  3d
+  write
+
+  let expected_timestamp = systemlist('stat -c %Y ' . shellescape(expand('%:p')))[0]
+
+  " Run the indexer on the current buffer
+  let results = struct#metadata#run_indexer('word_indexer')
+  let expected_results = {'words': [
+        \ {'word': 'foo', 'line': 1,
+        \  '__source_file': 'notes/NoteWithWords.md', '__indexer': 'word_indexer', '__timestamp': expected_timestamp},
+        \ {'word': 'bar', 'line': 1,
+        \  '__source_file': 'notes/NoteWithWords.md', '__indexer': 'word_indexer', '__timestamp': expected_timestamp},
+        \ {'word': 'baz', 'line': 2,
+        \  '__source_file': 'notes/NoteWithWords.md', '__indexer': 'word_indexer', '__timestamp': expected_timestamp},
+        \ ]}
+  call AssertDeepEqual(expected_results, results, 'Indexer should extract words from the buffer correctly')
+
+  " Clean up
+  bd!
+  call delete(g:test_workspace . '/MetadataTestRepo/notes/NoteWithWords.md')
+endfunction
+
+" a dummy indexer that assumes the first line is the title and also adds an
+" index for reverse words, because I need something that will write to the
+" same table from a second indexer
+function! s:TitleIndexer()
+  let title = getline(1)
+  let l:words = []
+
+  for lnum in range(1, line('$'))
+    let line = getline(lnum)
+    let l:line_words = split(line, '\W\+')
+    for word in l:line_words
+      call extend(l:words, [{'word':reverse(word), 'line':lnum}])
+    endfor
+  endfor
+  return {'words': l:words, 'titles': [{'title': title}]}
+endfunction
+
+function! TestRunSeveralVimlIndexersOnASingleFile()
+  call struct#initialize(g:test_workspace . '/MetadataTestRepo', {
+        \ 'Page': {'root': 'notes/', 'ext': 'md'},
+        \ 'Task': {'root': 'tasks/', 'ext': 'txt'},
+        \ })
+
+  " Register the WordIndexer and TitleIndexer
+  call struct#metadata#register_viml_indexer('word_indexer', function('s:WordIndexer'))
+  call struct#metadata#register_viml_indexer('title_indexer', function('s:TitleIndexer'))
+
+  " Open a test buffer
+  Page NoteWithWords
+  call append(0, 'foo bar')
+  call append(1, 'baz')
+  3d
+  write
+
+  let expected_timestamp = systemlist('stat -c %Y ' . shellescape(expand('%:p')))[0]
+
+  " Run the indexers on the current buffer
+  let results = struct#metadata#run_all_indexers()
+  let expected_results = {
+        \ 'words': [
+        \   {'word': 'oof', 'line': 1,
+        \    '__source_file': 'notes/NoteWithWords.md', '__indexer': 'title_indexer', '__timestamp': expected_timestamp},
+        \   {'word': 'rab', 'line': 1,
+        \    '__source_file': 'notes/NoteWithWords.md', '__indexer': 'title_indexer', '__timestamp': expected_timestamp},
+        \   {'word': 'zab', 'line': 2,
+        \    '__source_file': 'notes/NoteWithWords.md', '__indexer': 'title_indexer', '__timestamp': expected_timestamp},
+        \   {'word': 'foo', 'line': 1,
+        \    '__source_file': 'notes/NoteWithWords.md', '__indexer': 'word_indexer', '__timestamp': expected_timestamp},
+        \   {'word': 'bar', 'line': 1,
+        \    '__source_file': 'notes/NoteWithWords.md', '__indexer': 'word_indexer', '__timestamp': expected_timestamp},
+        \   {'word': 'baz', 'line': 2,
+        \    '__source_file': 'notes/NoteWithWords.md', '__indexer': 'word_indexer', '__timestamp': expected_timestamp},
+        \ ],
+        \ 'titles': [
+        \   {'title': 'foo bar',
+        \    '__source_file': 'notes/NoteWithWords.md', '__indexer': 'title_indexer', '__timestamp': expected_timestamp},
+        \ ]
+        \ }
+  call AssertDeepEqual(expected_results, results, 'Indexers should aggregate results from multiple indexers correctly')
+endfunction
+
+function! TestRunSeveralVimlIndexersOnMutipleBuffers()
+  call struct#initialize(g:test_workspace . '/MetadataTestRepo', {
+        \ 'Page': {'root': 'notes/', 'ext': 'md'},
+        \ 'Task': {'root': 'tasks/', 'ext': 'txt'},
+        \ })
+  
+  " Register the WordIndexer and TitleIndexer
+  call struct#metadata#register_viml_indexer('word_indexer', function('s:WordIndexer'))
+  call struct#metadata#register_viml_indexer('title_indexer', function('s:TitleIndexer'))
+
+  " clear any loaded buffers
+  bufdo bwipeout!
+
+  " Open first test buffer
+  Page NoteWithWords1
+  call append(0, 'foo bar')
+  call append(1, 'baz')
+  3d
+  write
+
+  let expected_timestamp1 = systemlist('stat -c %Y ' . shellescape(expand('%:p')))[0]
+
+  " Open second test buffer
+  Page NoteWithWords2
+  call append(0, 'hello world')
+  call append(1, 'foo baz')
+  3d
+  write
+
+  let expected_timestamp2 = systemlist('stat -c %Y ' . shellescape(expand('%:p')))[0]
+
+  let actual_results = struct#metadata#index_all_loaded_buffers()
+
+  " Verify aggregated results
+  let expected_results = {
+        \ 'words': [
+        \   {'word': 'oof', 'line': 1,
+        \    '__source_file': 'notes/NoteWithWords1.md', '__indexer': 'title_indexer',
+        \    '__timestamp': expected_timestamp1},
+        \   {'word': 'rab', 'line': 1,
+        \    '__source_file': 'notes/NoteWithWords1.md', '__indexer': 'title_indexer',
+        \    '__timestamp': expected_timestamp1},
+        \   {'word': 'zab', 'line': 2,
+        \    '__source_file': 'notes/NoteWithWords1.md', '__indexer': 'title_indexer',
+        \    '__timestamp': expected_timestamp1},
+        \   {'word': 'foo', 'line': 1,
+        \    '__source_file': 'notes/NoteWithWords1.md', '__indexer': 'word_indexer',
+        \    '__timestamp': expected_timestamp1},
+        \   {'word': 'bar', 'line': 1,
+        \    '__source_file': 'notes/NoteWithWords1.md', '__indexer': 'word_indexer',
+        \    '__timestamp': expected_timestamp1},
+        \   {'word': 'baz', 'line': 2,
+        \    '__source_file': 'notes/NoteWithWords1.md', '__indexer': 'word_indexer',
+        \    '__timestamp': expected_timestamp1},
+        \   {'word': 'olleh', 'line': 1,
+        \    '__source_file': 'notes/NoteWithWords2.md', '__indexer': 'title_indexer',
+        \    '__timestamp': expected_timestamp2},
+        \   {'word': 'dlrow', 'line': 1,
+        \    '__source_file': 'notes/NoteWithWords2.md', '__indexer': 'title_indexer',
+        \    '__timestamp': expected_timestamp2},
+        \   {'word': 'oof', 'line': 2,
+        \    '__source_file': 'notes/NoteWithWords2.md', '__indexer': 'title_indexer',
+        \    '__timestamp': expected_timestamp2},
+        \   {'word': 'zab', 'line': 2,
+        \    '__source_file': 'notes/NoteWithWords2.md', '__indexer': 'title_indexer',
+        \    '__timestamp': expected_timestamp2},
+        \   {'word': 'hello', 'line': 1,
+        \    '__source_file': 'notes/NoteWithWords2.md', '__indexer': 'word_indexer',
+        \    '__timestamp': expected_timestamp2},
+        \   {'word': 'world', 'line': 1,
+        \    '__source_file': 'notes/NoteWithWords2.md', '__indexer': 'word_indexer',
+        \    '__timestamp': expected_timestamp2},
+        \   {'word': 'foo', 'line': 2,
+        \    '__source_file': 'notes/NoteWithWords2.md', '__indexer': 'word_indexer',
+        \    '__timestamp': expected_timestamp2},
+        \   {'word': 'baz', 'line': 2,
+        \    '__source_file': 'notes/NoteWithWords2.md', '__indexer': 'word_indexer',
+        \    '__timestamp': expected_timestamp2},
+        \ ],
+        \ 'titles': [
+        \   {'title': 'foo bar',
+        \    '__source_file': 'notes/NoteWithWords1.md', '__indexer': 'title_indexer',
+        \    '__timestamp': expected_timestamp1},
+        \   {'title': 'hello world',
+        \    '__source_file': 'notes/NoteWithWords2.md', '__indexer': 'title_indexer',
+        \    '__timestamp': expected_timestamp2},
+        \ ]
+        \ }
+  call AssertDeepEqual(expected_results, actual_results,
+        \ 'Indexers should aggregate results from multiple buffers correctly')
+
+  " Clean up
+  bd!
+  bd!
+  call delete(g:test_workspace . '/MetadataTestRepo/notes/NoteWithWords1.md')
+  call delete(g:test_workspace . '/MetadataTestRepo/notes/NoteWithWords2.md')
+endfunction
+
+function! TestRegisteringIndexerBeforeInitializationThrows()
+  " Ensure that registering an indexer before struct#initialize throws
+  if exists('g:workflow_metadata_indexers')
+    unlet g:workflow_metadata_indexers
+  endif
+
+  function! DummyIndexer()
+    return {}
+  endfunction
+
+  call AssertThrows(function('struct#metadata#register_viml_indexer', ['dummy_indexer', function('DummyIndexer')]),
+        \ "Can't register indexer before Workflow.vim has finished initialization")
+endfunction
+
 " TODO
-" - executing viml indexers
-"   * run a single viml indexer on a specific file and verify output
-"   * run all viml indexers on a specific file and verify aggregated output
-"   * run viml indexers on multiple files and verify aggregated output
-" - registering bash indexers
-" - executing bash indexers
 " - atomic update tests
 "   - needs planning
+" - registering bash indexers
+" - executing bash indexers
+" - WTF AM I GOING TO DO ABOUT FILE DELETES?!

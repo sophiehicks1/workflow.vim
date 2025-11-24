@@ -9,20 +9,7 @@ function! struct#metadata#initialize() abort
     endif
     let g:workflow_metadata_jobstate_dir = job_state_dir
   endif
-endfunction
-
-function! struct#metadata#register_viml_indexer(name, indexerFunc) abort
-  if !exists('g:workflow_metadata_viml_indexers')
-    let g:workflow_metadata_viml_indexers = {}
-  endif
-  let g:workflow_metadata_viml_indexers[a:name] = a:indexerFunc
-endfunction
-
-function! struct#metadata#get_viml_indexers() abort
-  if !exists('g:workflow_metadata_viml_indexers')
-    return {}
-  endif
-  return g:workflow_metadata_viml_indexers
+  let g:workflow_metadata_indexers = {}
 endfunction
 
 " Locking system
@@ -156,4 +143,112 @@ function! struct#metadata#lock_files(job_id, files, continue) abort
   endif
 
   return locked_files
+endfunction
+
+" Indexer system
+" ==============
+"
+" The metadata indexing system is a modular system for extracting structured
+" data such as tags, links, and other metadata from files in the repository.
+" Users can register custom metadata indexers to extend the kinds of metadata
+" supported by the system. The system will automatically maintain a metadata
+" store containing the indexed metadata for all files in the repository,
+" updating it as files are added, modified, or deleted.
+"
+" Indexers can currently only be added as vimscript functions, but support for
+" bash indexers may be added in the future.
+"
+" - vimscript indexers should operate on the current buffer, and return a
+"   dictionary mapping table-name to rows. Each row is itself a dictionary
+"   mapping column-names to values.
+"
+" - bash indexers have not been implemented yet. API will probably be as
+"   follows (TBC):
+"    * The indexer is a bash script that takes a file path as its first
+"      argument.
+"    * The script outputs csv data to stdout, with the first column being
+"      the table name, and subsequent columns being the column values. The first
+"      row should be a header row with column names.
+
+function! struct#metadata#register_viml_indexer(name, indexerFunc) abort
+  if !exists('g:workflow_metadata_indexers')
+    throw "Can't register indexer before Workflow.vim has finished initialization"
+  endif
+  if has_key(g:workflow_metadata_indexers, a:name)
+    echohl WarningMsg
+    echom 'Indexer ' . a:name . ' is already registered. Overwriting.'
+    echohl None
+  endif
+  let g:workflow_metadata_indexers[a:name] = a:indexerFunc
+endfunction
+
+" Enrich indexed rows with metadata about source file, indexer, and timestamp
+" The timestamp is the last modified time of the indexed file, since in
+" production, indexers will be run on locked copies of files, so the results
+" returned by the indexer will represent the state of the file at the time it
+" was locked.
+function! s:enrich_indexed_rows(indexer_name, indexed_file, rows) abort
+  let enriched_rows = []
+  let timestamp = systemlist('stat -c %Y ' . shellescape(a:indexed_file))[0]
+  let filepath = struct#utils#to_relative_path(a:indexed_file)
+  for row in a:rows
+    let enriched_row = copy(row)
+    let enriched_row['__source_file'] = filepath
+    let enriched_row['__indexer'] = a:indexer_name
+    let enriched_row['__timestamp'] = timestamp
+    call add(enriched_rows, enriched_row)
+  endfor
+  return enriched_rows
+endfunction
+
+function! struct#metadata#run_indexer(indexer_name) abort
+  if !exists('g:workflow_metadata_indexers')
+    throw "Can't run indexer before Workflow.vim has finished initialization"
+  endif
+  if !has_key(g:workflow_metadata_indexers, a:indexer_name)
+    throw 'No such viml indexer: ' . a:indexer_name
+  endif
+  let IndexerFunc = g:workflow_metadata_indexers[a:indexer_name]
+  let results = call(IndexerFunc, [])
+  let indexed_file = expand('%:p')
+  for [table_name, rows] in items(results)
+    let enriched_rows = s:enrich_indexed_rows(a:indexer_name, indexed_file, rows)
+    let results[table_name] = enriched_rows
+  endfor
+  return results
+endfunction
+
+function! struct#metadata#run_all_indexers() abort
+  if !exists('g:workflow_metadata_indexers')
+    throw "Can't run indexers before Workflow.vim has finished initialization"
+  endif
+  let all_results = {}
+  for indexer_name in keys(g:workflow_metadata_indexers)
+    let indexer_results = struct#metadata#run_indexer(indexer_name)
+    for [table_name, rows] in items(indexer_results)
+      if !has_key(all_results, table_name)
+        let all_results[table_name] = []
+      endif
+      let all_results[table_name] += rows
+    endfor
+  endfor
+  return all_results
+endfunction
+
+" TODO refactor to remove duplicated result merging logic
+function! struct#metadata#index_all_loaded_buffers() abort
+  let all_results = {}
+  for bufnum in range(1, bufnr('$'))
+    if bufloaded(bufnum)
+      execute 'buffer' bufnum
+      let indexer_results = struct#metadata#run_all_indexers()
+      for [table_name, rows] in items(indexer_results)
+        if !has_key(all_results, table_name)
+          let all_results[table_name] = []
+        endif
+        let all_results[table_name] += rows
+      endfor
+    endif
+  endfor
+  return all_results
 endfunction
