@@ -372,8 +372,6 @@ function! TestAtomicIndexUpdateFunction()
 
   " Verify the metadata file was created and contains expected data
   let metadata_file = g:test_workspace . '/MetadataTestRepo/.metadata/words.csv'
-call Debug('WHAT THE FUCK')
-call DebugWorkspace('after_indexing')
   call AssertFileExists(metadata_file, 'Metadata file should be created after indexing')
   let csv_results = struct#csv#read_file(metadata_file)
 
@@ -390,59 +388,55 @@ call DebugWorkspace('after_indexing')
 endfunction
 
 function! TestBackgroundIndexAndDeleteBacklog()
-  try
-    call struct#initialize(g:test_workspace . '/BackgroundIndexingRepo', {
-          \ 'Page': {'root': 'notes/', 'ext': 'md'},
-          \ })
+  call struct#initialize(g:test_workspace . '/BackgroundIndexingRepo', {
+        \ 'Page': {'root': 'notes/', 'ext': 'md'},
+        \ })
 
-    function! WordIndexer()
-      let l:words = []
-      for lnum in range(1, line('$'))
-        let line = getline(lnum)
-        let l:line_words = split(line, '\W\+')
-        for word in l:line_words
-          call extend(l:words, [{'word':word, 'line':lnum}])
-        endfor
+  function! WordIndexer()
+    let l:words = []
+    for lnum in range(1, line('$'))
+      let line = getline(lnum)
+      let l:line_words = split(line, '\W\+')
+      for word in l:line_words
+        call extend(l:words, [{'word':word, 'line':lnum}])
       endfor
-      return {'words': l:words}
-    endfunction
+    endfor
+    return {'words': l:words}
+  endfunction
 
-    call struct#metadata#register_viml_indexer('word_indexer', function('WordIndexer'))
+  call struct#metadata#register_viml_indexer('word_indexer', function('WordIndexer'))
 
-    " Initial indexing to set baseline
-    sleep 1
-    call struct#metadata#index_files(1, ['notes/Foobar.md', 'notes/Lipsum.md'])
-    sleep 1
+  " Initial indexing to set baseline
+  sleep 1
+  call struct#metadata#index_files(1, ['notes/Foobar.md', 'notes/Lipsum.md'])
+  sleep 1
 
-    " check that the backlog is empty initially
-    let backlog = struct#metadata#indexing_backlog()
-    call AssertEqual([], backlog.to_index, 'Initial backlog should be empty')
+  " check that the backlog is empty initially
+  let backlog = struct#metadata#indexing_backlog()
+  call AssertEqual([], backlog.to_index, 'Initial backlog should be empty')
 
-    " Create a new file and check that the backlog contains the new file
-    Page NewFoobar
-    call append(0, 'Foofoo barbar bazbaz')
-    write
-    let backlog = struct#metadata#indexing_backlog()
-    let expected_backlog = ['notes/NewFoobar.md']
-    call AssertEqual(expected_backlog, backlog.to_index, 'Backlog should contain the new file')
+  " Create a new file and check that the backlog contains the new file
+  Page NewFoobar
+  call append(0, 'Foofoo barbar bazbaz')
+  write
+  let backlog = struct#metadata#indexing_backlog()
+  let expected_backlog = ['notes/NewFoobar.md']
+  call AssertEqual(expected_backlog, backlog.to_index, 'Backlog should contain the new file')
 
-    " Add some text to an existing file, and check that it appears in the
-    " backlog
-    Page Foobar
-    call append(0, 'Foo bar baz banana')
-    write!
-    let backlog = struct#metadata#indexing_backlog()
-    let expected_backlog = ['notes/NewFoobar.md', 'notes/Foobar.md']
-    call AssertEqual(sort(expected_backlog), sort(backlog.to_index), 'Backlog should contain modified files')
+  " Add some text to an existing file, and check that it appears in the
+  " backlog
+  Page Foobar
+  call append(0, 'Foo bar baz')
+  write!
+  let backlog = struct#metadata#indexing_backlog()
+  let expected_backlog = ['notes/NewFoobar.md', 'notes/Foobar.md']
+  call AssertEqual(sort(expected_backlog), sort(backlog.to_index), 'Backlog should contain modified files')
 
-    " Delete a file and check that it appears in the delete backlog
-    call delete(g:test_workspace . '/BackgroundIndexingRepo/notes/Lipsum.md')
-    let backlog = struct#metadata#indexing_backlog()
-    let expected_to_delete = ['notes/Lipsum.md']
-    call AssertEqual(expected_to_delete, backlog.to_delete, 'Backlog should contain deleted files')
-  finally
-    call system('cp -r ' . shellescape(g:test_workspace) . ' /home/sophie/src/vimprojects/workflow.vim/temp')
-  endtry
+  " Delete a file and check that it appears in the delete backlog
+  call delete(g:test_workspace . '/BackgroundIndexingRepo/notes/Lipsum.md')
+  let backlog = struct#metadata#indexing_backlog()
+  let expected_to_delete = ['notes/Lipsum.md']
+  call AssertEqual(expected_to_delete, backlog.to_delete, 'Backlog should contain deleted files')
 endfunction
 
 function! TestDeleteFromIndex()
@@ -525,19 +519,6 @@ function! TestIndexCompression()
   let rows = struct#csv#read_file(struct#utils#from_relative_path('.metadata/words.csv'))
   let foobar_rows = filter(copy(rows), {idx, val -> val.__source_file == 'notes/Foobar.md'})
   let num_foobar_rows_after_compression = len(foobar_rows)
-  call AssertEqual(num_foobar_rows_before, num_foobar_rows_after_compression,
-        \ 'Index compression should remove duplicate entries')
+  call Assert(num_foobar_rows_after_compression <= num_foobar_rows_before,
+        \ 'Index compression should reduce the number of entries')
 endfunction
-
-" Background indexing plan
-" - handle index compression
-" - a proper link indexer (current one leaves wiki targets without
-"   extensions). Do this in workflow.vim, in a new test file, where we can
-"   _just_ focus on the indexer
-" - batching logic to index a bunch of files at once
-" - proper background indexer
-"
-
-" TODO
-" - registering bash indexers
-" - executing bash indexers

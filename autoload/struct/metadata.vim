@@ -446,16 +446,41 @@ function! s:write_indexing_results_to_store(results) abort
   call s:persist_updated_files(locked_output_files)
 endfunction
 
+" This garbage is needed because filecopy() in vim fails silently and
+" counterintuitively in a bunch of different ways.
+function! s:safe_filecopy(locked_file, dest_file) abort
+  if filereadable(a:dest_file)
+    call struct#metadata#log_debug('Deleting existing metadata file in repo: ' . a:dest_file)
+    let delete_result = ! delete(a:dest_file)
+    if delete_result
+      call struct#metadata#log_debug('Deleted existing metadata file: ' . a:dest_file)
+    else
+      throw 'Failed to delete existing metadata file: ' . a:dest_file
+    endif
+  endif
+  if !isdirectory(fnamemodify(a:dest_file, ':h'))
+    call struct#metadata#log_debug('Creating directory for metadata file: ' . fnamemodify(a:dest_file, ':h'))
+    call mkdir(fnamemodify(a:dest_file, ':h'), 'p')
+    if isdirectory(fnamemodify(a:dest_file, ':h'))
+      call struct#metadata#log_debug('Created directory ' . fnamemodify(a:dest_file, ':h'))
+    else
+      throw 'Failed to create directory for metadata file: ' . fnamemodify(a:dest_file, ':h')
+    endif
+  endif
+  let copy_result = filecopy(a:locked_file, a:dest_file)
+  if copy_result
+    call struct#metadata#log_debug('Persisted updated metadata file to repo: ' . a:dest_file)
+  else
+    throw 'Failed to persist updated metadata file to repo: ' . a:dest_file
+  endif
+endfunction
+
 function! s:persist_updated_files(locked_output_files) abort
   for locked_file in a:locked_output_files
     let relative_path = s:path_relative_to_job_dir(locked_file)
     let dest_file = struct#utils#from_relative_path(relative_path)
     call struct#metadata#log_debug('Copying locked metadata file back to repo: ' . locked_file . ' -> ' . dest_file)
-    if filereadable(dest_file)
-      call delete(dest_file)
-    endif
-    call filecopy(locked_file, dest_file)
-    call struct#metadata#log_debug('Persisted updated metadata file to repo: ' . dest_file)
+    call s:safe_filecopy(locked_file, dest_file)
   endfor
 endfunction
 
@@ -478,7 +503,6 @@ function! struct#metadata#index_files(job_id, files) abort
     call struct#metadata#log_error('Indexing job failed: ' . v:exception)
     throw 'Indexing job failed: ' . v:exception
   finally
-call DebugWorkspace('before_cleanup')
     call struct#metadata#cleanup_job()
   endtry
 endfunction
