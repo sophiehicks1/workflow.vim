@@ -35,6 +35,7 @@ function! TestCanInitializeJobState()
 
   " clean up
   call delete(expected_job_dir, 'rf')
+  call struct#metadata#cleanup_job()
 endfunction
 
 function! TestCanCleanUpJobState()
@@ -50,7 +51,7 @@ function! TestCanCleanUpJobState()
   call AssertDirExists(expected_job_dir, 'Job state directory should be created at expected path')
 
   " clean up job state
-  call struct#metadata#cleanup_job('test_cleanup')
+  call struct#metadata#cleanup_job()
   call AssertDirNotExists(expected_job_dir, 'Job state directory should be removed after cleanup')
 endfunction
 
@@ -66,7 +67,7 @@ function! TestCanLockFilesForJob()
 
   " Locking a path, relative to the repo-root, creates a copy of the file
   " inside g:workflow_metadata_jobstate_dir / job_id
-  let locked_files = struct#metadata#lock_files('test', ['notes/Note1.md', 'notes/Note2.md'], v:false)
+  let locked_files = struct#metadata#lock_files(['notes/Note1.md', 'notes/Note2.md'], v:false)
   let expected_locked_files = [
         \ g:workflow_metadata_jobstate_dir . '/test/notes/Note1.md',
         \ g:workflow_metadata_jobstate_dir . '/test/notes/Note2.md'
@@ -75,15 +76,20 @@ function! TestCanLockFilesForJob()
   for file in expected_locked_files
     call AssertFileExists(file, 'Locked file should exist: ' . file)
   endfor
+  call struct#metadata#cleanup_job()
+
+  " locking files without initializing job state will throw
+  call AssertThrows(function('struct#metadata#lock_files', [['notes/Note1.md'], v:false]),
+        \ 'No job initialized.')
 
   " locking files for a non existent job id will throw
-  call AssertThrows(function('struct#metadata#lock_files', ['nonexistent', ['notes/Note1.md'], v:false]),
+  let g:workflow_current_job_id = 'nonexistent'
+  call AssertThrows(function('struct#metadata#lock_files', [['notes/Note1.md'], v:false]),
         \ 'Job does not exist: nonexistent')
-
-  call struct#metadata#cleanup_job('test')
+  unlet g:workflow_current_job_id
 endfunction
 
-" test that locking a non existent file will throw
+" test that locking a non existent file will behave as expected
 function! TestLockingNonExistentFileThrows()
   " Locking a non existent file throws
   call struct#initialize(g:test_workspace . '/MetadataTestRepo', {
@@ -92,9 +98,21 @@ function! TestLockingNonExistentFileThrows()
         \ })
   call struct#metadata#initialize_job('test')
 
-  call AssertThrows(function('struct#metadata#lock_files', ['test', ['notes/NonExistent.md'], v:false]),
-        \ 'File `notes/NonExistent.md` does not exist or is not readable.')
-  call struct#metadata#cleanup_job('test')
+  " with continue=false, we should be able to create the lock
+  let locked_files = struct#metadata#lock_files(['notes/NoteThatDoesntExist.md'], v:false)
+  let expected_locked_files = [
+        \ g:workflow_metadata_jobstate_dir . '/test/notes/NoteThatDoesntExist.md',
+        \ ]
+  call AssertEqual(expected_locked_files, locked_files, 'Locked files should match expected paths even if the source file does not exist')
+  for file in expected_locked_files
+    call AssertFileExists(file, 'Locked file should exist even if source file does not: ' . file)
+  endfor
+
+  " with continue=true, we should get an empty list back
+  let locked_files_continue = struct#metadata#lock_files(['notes/AnotherNonExistentFile.md'], v:true)
+  call AssertEqual([], locked_files_continue, 'Locking non-existent file with continue=true should return empty list')
+
+  call struct#metadata#cleanup_job()
 endfunction
 
 function! TestLockCollisionThrowsWithContinueIsFalse()
@@ -105,25 +123,31 @@ function! TestLockCollisionThrowsWithContinueIsFalse()
         \ 'Page': {'root': 'notes/', 'ext': 'md'},
         \ 'Task': {'root': 'tasks/', 'ext': 'txt'},
         \ })
-  " Initialize job state for two jobs
+  " Initialize job state for first job
   call struct#metadata#initialize_job('job1')
-  call struct#metadata#initialize_job('job2')
 
   " Job1 locks Note1.md and Task1.txt
-  let locked_files_job1 = struct#metadata#lock_files('job1', ['notes/Note1.md', 'tasks/Task1.txt'], v:false)
+  let locked_files_job1 = struct#metadata#lock_files(['notes/Note1.md', 'tasks/Task1.txt'], v:false)
   let expected_locked_files_job1 = [
         \ g:workflow_metadata_jobstate_dir . '/job1/notes/Note1.md',
         \ g:workflow_metadata_jobstate_dir . '/job1/tasks/Task1.txt'
         \ ]
   call AssertEqual(expected_locked_files_job1, locked_files_job1, 'Job1 locked files should match expected paths')
 
+  " Initialize job state for second job. N.B. THIS IS NOT A VALID USAGE PATTERN!
+  " Jobs set the current job id in global state, so they 
+  call struct#metadata#initialize_job('job2')
+
+
   " Job2 attempts to lock Note1.md with continue=false, which should throw
-  call AssertThrows(function('struct#metadata#lock_files', ['job2', ['notes/Note1.md', 'notes/Note2.md'], v:false]),
+  call AssertThrows(function('struct#metadata#lock_files', [['notes/Note1.md', 'notes/Note2.md'], v:false]),
         \ 'Lock conflict for the following files: notes/Note1.md')
 
   " clean up
-  call struct#metadata#cleanup_job('job1')
-  call struct#metadata#cleanup_job('job2')
+  call struct#metadata#cleanup_job()
+  " manually clean up job1 since job2's cleanup won't do it
+  call delete(g:workflow_metadata_jobstate_dir . '/job1', 'rf')
+
 endfunction
 
 function! TestLockCollisionCanContinueWithContinueIsTrue()
@@ -135,12 +159,9 @@ function! TestLockCollisionCanContinueWithContinueIsTrue()
         \ 'Task': {'root': 'tasks/', 'ext': 'txt'},
         \ })
 
-  " Initialize job state for two jobs
-  call struct#metadata#initialize_job('job1')
-  call struct#metadata#initialize_job('job2')
-
   " Job1 locks Note1.md and Task1.txt
-  let locked_files_job1 = struct#metadata#lock_files('job1', ['notes/Note1.md', 'tasks/Task1.txt'], v:false)
+  call struct#metadata#initialize_job('job1')
+  let locked_files_job1 = struct#metadata#lock_files(['notes/Note1.md', 'tasks/Task1.txt'], v:false)
   let expected_locked_files_job1 = [
         \ g:workflow_metadata_jobstate_dir . '/job1/notes/Note1.md',
         \ g:workflow_metadata_jobstate_dir . '/job1/tasks/Task1.txt'
@@ -148,15 +169,16 @@ function! TestLockCollisionCanContinueWithContinueIsTrue()
   call AssertEqual(expected_locked_files_job1, locked_files_job1, 'Job1 locked files should match expected paths')
 
   " Job2 attempts to lock Note1.md and Note2.md with continue=true
-  let locked_files_job2 = struct#metadata#lock_files('job2', ['notes/Note1.md', 'notes/Note2.md'], v:true)
+  call struct#metadata#initialize_job('job2')
+  let locked_files_job2 = struct#metadata#lock_files(['notes/Note1.md', 'notes/Note2.md'], v:true)
   let expected_locked_files_job2 = [
         \ g:workflow_metadata_jobstate_dir . '/job2/notes/Note2.md'
         \ ]
   call AssertEqual(expected_locked_files_job2, locked_files_job2, 'Job2 should only lock Note2.md successfully')
 
   " clean up
-  call struct#metadata#cleanup_job('job1')
-  call struct#metadata#cleanup_job('job2')
+  call struct#metadata#cleanup_job()
+  call delete(g:workflow_metadata_jobstate_dir . '/job1', 'rf')
 endfunction
 
 function! TestRegisteringVimlIndexer()
@@ -214,7 +236,7 @@ function! TestRunningASingleVimlIndexer()
   call struct#metadata#register_viml_indexer('word_indexer', function('s:WordIndexer'))
 
   " Open a test buffer
-  Page NoteWithWords
+  Page NewNoteWithWords
   call append(0, 'foo bar')
   call append(1, 'baz')
   3d
@@ -224,19 +246,25 @@ function! TestRunningASingleVimlIndexer()
 
   " Run the indexer on the current buffer
   let results = struct#metadata#run_indexer('word_indexer')
+  " This is needed, because _normally_ the indexer adds __source_file relative
+  " to the JOB DIR because we're operating on locked copies of the files. Here,
+  " we're just working on the files directly, so we need to adjust the paths.
+  function! AbsPath(rel_path)
+    return g:test_workspace . '/MetadataTestRepo/' . a:rel_path
+  endfunction
   let expected_results = {'words': [
         \ {'word': 'foo', 'line': 1,
-        \  '__source_file': 'notes/NoteWithWords.md', '__indexer': 'word_indexer', '__timestamp': expected_timestamp},
+        \  '__source_file': AbsPath('notes/NewNoteWithWords.md'), '__indexer': 'word_indexer', '__timestamp': expected_timestamp},
         \ {'word': 'bar', 'line': 1,
-        \  '__source_file': 'notes/NoteWithWords.md', '__indexer': 'word_indexer', '__timestamp': expected_timestamp},
+        \  '__source_file': AbsPath('notes/NewNoteWithWords.md'), '__indexer': 'word_indexer', '__timestamp': expected_timestamp},
         \ {'word': 'baz', 'line': 2,
-        \  '__source_file': 'notes/NoteWithWords.md', '__indexer': 'word_indexer', '__timestamp': expected_timestamp},
+        \  '__source_file': AbsPath('notes/NewNoteWithWords.md'), '__indexer': 'word_indexer', '__timestamp': expected_timestamp},
         \ ]}
   call AssertDeepEqual(expected_results, results, 'Indexer should extract words from the buffer correctly')
 
   " Clean up
   bd!
-  call delete(g:test_workspace . '/MetadataTestRepo/notes/NoteWithWords.md')
+  call delete(g:test_workspace . '/MetadataTestRepo/notes/NewNoteWithWords.md')
 endfunction
 
 " a dummy indexer that assumes the first line is the title and also adds an
@@ -267,7 +295,7 @@ function! TestRunSeveralVimlIndexersOnASingleFile()
   call struct#metadata#register_viml_indexer('title_indexer', function('s:TitleIndexer'))
 
   " Open a test buffer
-  Page NoteWithWords
+  Page NewNoteWithWords
   call append(0, 'foo bar')
   call append(1, 'baz')
   3d
@@ -277,125 +305,33 @@ function! TestRunSeveralVimlIndexersOnASingleFile()
 
   " Run the indexers on the current buffer
   let results = struct#metadata#run_all_indexers()
+  " This is needed, because _normally_ the indexer adds __source_file relative
+  " to the JOB DIR because we're operating on locked copies of the files. Here,
+  " we're just working on the files directly, so we need to adjust the paths.
+  function! AbsPath(rel_path)
+    return g:test_workspace . '/MetadataTestRepo/' . a:rel_path
+  endfunction
   let expected_results = {
         \ 'words': [
         \   {'word': 'oof', 'line': 1,
-        \    '__source_file': 'notes/NoteWithWords.md', '__indexer': 'title_indexer', '__timestamp': expected_timestamp},
+        \    '__source_file': AbsPath('notes/NewNoteWithWords.md'), '__indexer': 'title_indexer', '__timestamp': expected_timestamp},
         \   {'word': 'rab', 'line': 1,
-        \    '__source_file': 'notes/NoteWithWords.md', '__indexer': 'title_indexer', '__timestamp': expected_timestamp},
+        \    '__source_file': AbsPath('notes/NewNoteWithWords.md'), '__indexer': 'title_indexer', '__timestamp': expected_timestamp},
         \   {'word': 'zab', 'line': 2,
-        \    '__source_file': 'notes/NoteWithWords.md', '__indexer': 'title_indexer', '__timestamp': expected_timestamp},
+        \    '__source_file': AbsPath('notes/NewNoteWithWords.md'), '__indexer': 'title_indexer', '__timestamp': expected_timestamp},
         \   {'word': 'foo', 'line': 1,
-        \    '__source_file': 'notes/NoteWithWords.md', '__indexer': 'word_indexer', '__timestamp': expected_timestamp},
+        \    '__source_file': AbsPath('notes/NewNoteWithWords.md'), '__indexer': 'word_indexer', '__timestamp': expected_timestamp},
         \   {'word': 'bar', 'line': 1,
-        \    '__source_file': 'notes/NoteWithWords.md', '__indexer': 'word_indexer', '__timestamp': expected_timestamp},
+        \    '__source_file': AbsPath('notes/NewNoteWithWords.md'), '__indexer': 'word_indexer', '__timestamp': expected_timestamp},
         \   {'word': 'baz', 'line': 2,
-        \    '__source_file': 'notes/NoteWithWords.md', '__indexer': 'word_indexer', '__timestamp': expected_timestamp},
+        \    '__source_file': AbsPath('notes/NewNoteWithWords.md'), '__indexer': 'word_indexer', '__timestamp': expected_timestamp},
         \ ],
         \ 'titles': [
         \   {'title': 'foo bar',
-        \    '__source_file': 'notes/NoteWithWords.md', '__indexer': 'title_indexer', '__timestamp': expected_timestamp},
+        \    '__source_file': AbsPath('notes/NewNoteWithWords.md'), '__indexer': 'title_indexer', '__timestamp': expected_timestamp},
         \ ]
         \ }
   call AssertDeepEqual(expected_results, results, 'Indexers should aggregate results from multiple indexers correctly')
-endfunction
-
-function! TestRunSeveralVimlIndexersOnMutipleBuffers()
-  call struct#initialize(g:test_workspace . '/MetadataTestRepo', {
-        \ 'Page': {'root': 'notes/', 'ext': 'md'},
-        \ 'Task': {'root': 'tasks/', 'ext': 'txt'},
-        \ })
-  
-  " Register the WordIndexer and TitleIndexer
-  call struct#metadata#register_viml_indexer('word_indexer', function('s:WordIndexer'))
-  call struct#metadata#register_viml_indexer('title_indexer', function('s:TitleIndexer'))
-
-  " clear any loaded buffers
-  bufdo bwipeout!
-
-  " Open first test buffer
-  Page NoteWithWords1
-  call append(0, 'foo bar')
-  call append(1, 'baz')
-  3d
-  write
-
-  let expected_timestamp1 = systemlist('stat -c %Y ' . shellescape(expand('%:p')))[0]
-
-  " Open second test buffer
-  Page NoteWithWords2
-  call append(0, 'hello world')
-  call append(1, 'foo baz')
-  3d
-  write
-
-  let expected_timestamp2 = systemlist('stat -c %Y ' . shellescape(expand('%:p')))[0]
-
-  let actual_results = struct#metadata#index_all_loaded_buffers()
-
-  " Verify aggregated results
-  let expected_results = {
-        \ 'words': [
-        \   {'word': 'oof', 'line': 1,
-        \    '__source_file': 'notes/NoteWithWords1.md', '__indexer': 'title_indexer',
-        \    '__timestamp': expected_timestamp1},
-        \   {'word': 'rab', 'line': 1,
-        \    '__source_file': 'notes/NoteWithWords1.md', '__indexer': 'title_indexer',
-        \    '__timestamp': expected_timestamp1},
-        \   {'word': 'zab', 'line': 2,
-        \    '__source_file': 'notes/NoteWithWords1.md', '__indexer': 'title_indexer',
-        \    '__timestamp': expected_timestamp1},
-        \   {'word': 'foo', 'line': 1,
-        \    '__source_file': 'notes/NoteWithWords1.md', '__indexer': 'word_indexer',
-        \    '__timestamp': expected_timestamp1},
-        \   {'word': 'bar', 'line': 1,
-        \    '__source_file': 'notes/NoteWithWords1.md', '__indexer': 'word_indexer',
-        \    '__timestamp': expected_timestamp1},
-        \   {'word': 'baz', 'line': 2,
-        \    '__source_file': 'notes/NoteWithWords1.md', '__indexer': 'word_indexer',
-        \    '__timestamp': expected_timestamp1},
-        \   {'word': 'olleh', 'line': 1,
-        \    '__source_file': 'notes/NoteWithWords2.md', '__indexer': 'title_indexer',
-        \    '__timestamp': expected_timestamp2},
-        \   {'word': 'dlrow', 'line': 1,
-        \    '__source_file': 'notes/NoteWithWords2.md', '__indexer': 'title_indexer',
-        \    '__timestamp': expected_timestamp2},
-        \   {'word': 'oof', 'line': 2,
-        \    '__source_file': 'notes/NoteWithWords2.md', '__indexer': 'title_indexer',
-        \    '__timestamp': expected_timestamp2},
-        \   {'word': 'zab', 'line': 2,
-        \    '__source_file': 'notes/NoteWithWords2.md', '__indexer': 'title_indexer',
-        \    '__timestamp': expected_timestamp2},
-        \   {'word': 'hello', 'line': 1,
-        \    '__source_file': 'notes/NoteWithWords2.md', '__indexer': 'word_indexer',
-        \    '__timestamp': expected_timestamp2},
-        \   {'word': 'world', 'line': 1,
-        \    '__source_file': 'notes/NoteWithWords2.md', '__indexer': 'word_indexer',
-        \    '__timestamp': expected_timestamp2},
-        \   {'word': 'foo', 'line': 2,
-        \    '__source_file': 'notes/NoteWithWords2.md', '__indexer': 'word_indexer',
-        \    '__timestamp': expected_timestamp2},
-        \   {'word': 'baz', 'line': 2,
-        \    '__source_file': 'notes/NoteWithWords2.md', '__indexer': 'word_indexer',
-        \    '__timestamp': expected_timestamp2},
-        \ ],
-        \ 'titles': [
-        \   {'title': 'foo bar',
-        \    '__source_file': 'notes/NoteWithWords1.md', '__indexer': 'title_indexer',
-        \    '__timestamp': expected_timestamp1},
-        \   {'title': 'hello world',
-        \    '__source_file': 'notes/NoteWithWords2.md', '__indexer': 'title_indexer',
-        \    '__timestamp': expected_timestamp2},
-        \ ]
-        \ }
-  call AssertDeepEqual(expected_results, actual_results,
-        \ 'Indexers should aggregate results from multiple buffers correctly')
-
-  " Clean up
-  bd!
-  bd!
-  call delete(g:test_workspace . '/MetadataTestRepo/notes/NoteWithWords1.md')
-  call delete(g:test_workspace . '/MetadataTestRepo/notes/NoteWithWords2.md')
 endfunction
 
 function! TestRegisteringIndexerBeforeInitializationThrows()
@@ -412,9 +348,196 @@ function! TestRegisteringIndexerBeforeInitializationThrows()
         \ "Can't register indexer before Workflow.vim has finished initialization")
 endfunction
 
+function! TestAtomicIndexUpdateFunction()
+  call struct#initialize(g:test_workspace . '/MetadataTestRepo', {
+        \ 'Page': {'root': 'notes/', 'ext': 'md'},
+        \ })
+  " Define a simple word indexer
+  function! WordIndexer()
+    let l:words = []
+    for lnum in range(1, line('$'))
+      let line = getline(lnum)
+      let l:line_words = split(line, '\W\+')
+      for word in l:line_words
+        call extend(l:words, [{'word':word, 'line':lnum}])
+      endfor
+    endfor
+    return {'words': l:words}
+  endfunction
+
+  " Register the indexer
+  call struct#metadata#register_viml_indexer('word_indexer', function('WordIndexer'))
+
+  call struct#metadata#index_files(1, ['notes/ExistingNoteWithWords.md', 'notes/AnotherNoteWithWords.md'])
+
+  " Verify the metadata file was created and contains expected data
+  let metadata_file = g:test_workspace . '/MetadataTestRepo/.metadata/words.csv'
+call Debug('WHAT THE FUCK')
+call DebugWorkspace('after_indexing')
+  call AssertFileExists(metadata_file, 'Metadata file should be created after indexing')
+  let csv_results = struct#csv#read_file(metadata_file)
+
+  " Compare the words extracted
+  let csv_result_words = map(deepcopy(csv_results), {idx, val -> val.word})
+  let expected_words = ['Lorem', 'ipsum', 'dolor', 'Sit', 'amet', 'Foo', 'bar', 'baz']
+  call AssertDeepEqual(sort(expected_words), sort(csv_result_words), 'Indexed words should match expected words')
+
+  " Compare the headings
+  let actual_headers = keys(csv_results[0])
+
+  let expected_headers = sort(['word', 'line', '__source_file', '__indexer', '__timestamp'])
+  call AssertDeepEqual(expected_headers, sort(actual_headers), 'CSV headers should match expected headers')
+endfunction
+
+function! TestBackgroundIndexAndDeleteBacklog()
+  try
+    call struct#initialize(g:test_workspace . '/BackgroundIndexingRepo', {
+          \ 'Page': {'root': 'notes/', 'ext': 'md'},
+          \ })
+
+    function! WordIndexer()
+      let l:words = []
+      for lnum in range(1, line('$'))
+        let line = getline(lnum)
+        let l:line_words = split(line, '\W\+')
+        for word in l:line_words
+          call extend(l:words, [{'word':word, 'line':lnum}])
+        endfor
+      endfor
+      return {'words': l:words}
+    endfunction
+
+    call struct#metadata#register_viml_indexer('word_indexer', function('WordIndexer'))
+
+    " Initial indexing to set baseline
+    sleep 1
+    call struct#metadata#index_files(1, ['notes/Foobar.md', 'notes/Lipsum.md'])
+    sleep 1
+
+    " check that the backlog is empty initially
+    let backlog = struct#metadata#indexing_backlog()
+    call AssertEqual([], backlog.to_index, 'Initial backlog should be empty')
+
+    " Create a new file and check that the backlog contains the new file
+    Page NewFoobar
+    call append(0, 'Foofoo barbar bazbaz')
+    write
+    let backlog = struct#metadata#indexing_backlog()
+    let expected_backlog = ['notes/NewFoobar.md']
+    call AssertEqual(expected_backlog, backlog.to_index, 'Backlog should contain the new file')
+
+    " Add some text to an existing file, and check that it appears in the
+    " backlog
+    Page Foobar
+    call append(0, 'Foo bar baz banana')
+    write!
+    let backlog = struct#metadata#indexing_backlog()
+    let expected_backlog = ['notes/NewFoobar.md', 'notes/Foobar.md']
+    call AssertEqual(sort(expected_backlog), sort(backlog.to_index), 'Backlog should contain modified files')
+
+    " Delete a file and check that it appears in the delete backlog
+    call delete(g:test_workspace . '/BackgroundIndexingRepo/notes/Lipsum.md')
+    let backlog = struct#metadata#indexing_backlog()
+    let expected_to_delete = ['notes/Lipsum.md']
+    call AssertEqual(expected_to_delete, backlog.to_delete, 'Backlog should contain deleted files')
+  finally
+    call system('cp -r ' . shellescape(g:test_workspace) . ' /home/sophie/src/vimprojects/workflow.vim/temp')
+  endtry
+endfunction
+
+function! TestDeleteFromIndex()
+  call struct#initialize(g:test_workspace . '/BackgroundIndexingRepo', {
+        \ 'Page': {'root': 'notes/', 'ext': 'md'},
+        \ })
+
+  function! WordIndexer()
+    let l:words = []
+    for lnum in range(1, line('$'))
+      let line = getline(lnum)
+      let l:line_words = split(line, '\W\+')
+      for word in l:line_words
+        call extend(l:words, [{'word':word, 'line':lnum}])
+      endfor
+    endfor
+    return {'words': l:words}
+  endfunction
+
+  call struct#metadata#register_viml_indexer('word_indexer', function('WordIndexer'))
+
+  Page ToBeDeleted
+  call append(0, 'This file will be deleted from the index')
+  write
+
+  " Initial indexing to set baseline
+  call struct#metadata#index_files(1, ['notes/ToBeDeleted.md'])
+
+  " Verify that the file is indexed
+  let metadata_file = struct#utils#from_relative_path('.metadata/words.csv')
+  let csv_results = struct#csv#read_file(metadata_file)
+  let indexed_files = uniq(map(deepcopy(csv_results), {idx, val -> val.__source_file}))
+  call Assert(index(indexed_files, 'notes/ToBeDeleted.md') != -1,
+        \ 'File should be indexed before deletion')
+
+  " Delete the file from the index
+  call struct#metadata#delete_from_index(1, ['notes/ToBeDeleted.md'])
+
+  " Verify that the file is no longer indexed
+  let csv_results_after_delete = struct#csv#read_file(metadata_file)
+  let indexed_files_after_delete = uniq(map(deepcopy(csv_results_after_delete), {idx, val -> val.__source_file}))
+  call Assert(index(indexed_files_after_delete, 'notes/ToBeDeleted.md') == -1,
+        \ 'File should be removed from index after deletion')
+endfunction
+
+function! TestIndexCompression()
+  call struct#initialize(g:test_workspace . '/BackgroundIndexingRepo', {
+        \ 'Page': {'root': 'notes/', 'ext': 'md'},
+        \ })
+
+  function! WordIndexer()
+    let l:words = []
+    for lnum in range(1, line('$'))
+      let line = getline(lnum)
+      let l:line_words = split(line, '\W\+')
+      for word in l:line_words
+        call extend(l:words, [{'word':word, 'line':lnum}])
+      endfor
+    endfor
+    return {'words': l:words}
+  endfunction
+
+  call struct#metadata#register_viml_indexer('word_indexer', function('WordIndexer'))
+ 
+  " Confirm that notes/Foobar.md is indexed
+  let rows = struct#csv#read_file(struct#utils#from_relative_path('.metadata/words.csv'))
+  let foobar_rows = filter(copy(rows), {idx, val -> val.__source_file == 'notes/Foobar.md'})
+  let num_foobar_rows_before = len(foobar_rows)
+  call Assert(num_foobar_rows_before != 0, 'notes/Foobar.md should be indexed initially')
+
+  " Confirm that there are more rows after indexing again (duplicate entries)
+  call struct#metadata#index_files(1, ['notes/Foobar.md'])
+  let rows = struct#csv#read_file(struct#utils#from_relative_path('.metadata/words.csv'))
+  let foobar_rows = filter(copy(rows), {idx, val -> val.__source_file == 'notes/Foobar.md'})
+  let num_foobar_rows_after = len(foobar_rows)
+  call Assert(num_foobar_rows_after > num_foobar_rows_before, 'Re-indexing should create duplicate entries')
+
+  " Now, run compression
+  call struct#metadata#compress_index(1)
+  let rows = struct#csv#read_file(struct#utils#from_relative_path('.metadata/words.csv'))
+  let foobar_rows = filter(copy(rows), {idx, val -> val.__source_file == 'notes/Foobar.md'})
+  let num_foobar_rows_after_compression = len(foobar_rows)
+  call AssertEqual(num_foobar_rows_before, num_foobar_rows_after_compression,
+        \ 'Index compression should remove duplicate entries')
+endfunction
+
+" Background indexing plan
+" - handle index compression
+" - a proper link indexer (current one leaves wiki targets without
+"   extensions). Do this in workflow.vim, in a new test file, where we can
+"   _just_ focus on the indexer
+" - batching logic to index a bunch of files at once
+" - proper background indexer
+"
+
 " TODO
-" - atomic update tests
-"   - needs planning
 " - registering bash indexers
 " - executing bash indexers
-" - WTF AM I GOING TO DO ABOUT FILE DELETES?!

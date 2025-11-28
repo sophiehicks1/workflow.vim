@@ -70,7 +70,9 @@ endfunction
 function! s:get_existing_headers_from_file(file_path) abort
   if filereadable(a:file_path)
     let lines = readfile(a:file_path)
-    return s:parse_csv_into_lists([lines[0]])[0]
+    if !empty(lines)
+      return s:parse_csv_into_lists([lines[0]])[0]
+    endif
   endif
   return []
 endfunction
@@ -87,18 +89,25 @@ function! s:map_values_to_headers(headers, row) abort
   return values
 endfunction
 
+function! s:safe_writefile(lines, file_path, mode) abort
+  if !isdirectory(fnamemodify(a:file_path, ':h'))
+    call mkdir(fnamemodify(a:file_path, ':h'), 'p')
+  endif
+  call writefile(a:lines, a:file_path, a:mode)
+endfunction
+
 function! s:simple_csv_write(file_path, headers, dict_rows) abort
-  call writefile([s:format_csv_line(a:headers)], a:file_path, 's')
+  call s:safe_writefile([s:format_csv_line(a:headers)], a:file_path, 's')
   for row in a:dict_rows
     let row_values = s:map_values_to_headers(a:headers, row)
-    call writefile([s:format_csv_line(row_values)], a:file_path, 'a')
+    call s:safe_writefile([s:format_csv_line(row_values)], a:file_path, 'a')
   endfor
 endfunction
 
 function! s:simple_csv_append(file_path, headers, dict_rows) abort
   for row in a:dict_rows
     let row_values = s:map_values_to_headers(a:headers, row)
-    call writefile([s:format_csv_line(row_values)], a:file_path, 'a')
+    call s:safe_writefile([s:format_csv_line(row_values)], a:file_path, 'a')
   endfor
 endfunction
 
@@ -125,6 +134,9 @@ function! s:merge_data(existing_data, merged_headers, dict_rows) abort
 endfunction
 
 function! s:merging_csv_write(file_path, dict_rows) abort
+  echohl WarningMsg
+  echom 'CSV headers do not match existing file headers. Merging data with unified headers.'
+  echohl None
   let existing_data = struct#csv#read_file(a:file_path)
   let merged_headers = s:merge_headers(existing_data, a:dict_rows)
   let merged_data = s:merge_data(existing_data, merged_headers, a:dict_rows)
@@ -146,4 +158,16 @@ function! struct#csv#append_to_file(file_path, dict_rows) abort
       call s:merging_csv_write(a:file_path, a:dict_rows)
     endif
   endif
+endfunction
+
+function! struct#csv#overwrite_file(file_path, dict_rows) abort
+  call struct#metadata#log_debug('Overwriting CSV file: ' . a:file_path . 
+        \ ' with ' . len(a:dict_rows) . ' rows.')
+  if empty(a:dict_rows)
+    " No data to write, create an empty file
+    call s:safe_writefile([], a:file_path, 's')
+    return
+  endif
+  let headers = s:get_headers_from_dict_rows(a:dict_rows)
+  call s:simple_csv_write(a:file_path, headers, a:dict_rows)
 endfunction

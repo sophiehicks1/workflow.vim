@@ -56,6 +56,21 @@ function! struct#utils#resolve_wiki_link(wiki_link_target)
   return a:wiki_link_target . '.' . ext
 endfunction
 
+function! struct#utils#all_repo_files()
+  " storing in a map, to avoid duplicates from nested workflows
+  let files = {}
+  for workflow_name in keys(g:struct_workflows)
+    let root = struct#utils#workflow_root(workflow_name)
+    let ext = struct#utils#workflow_ext(workflow_name)
+    " Use globpath to find all files with the given extension under the root
+    for file in globpath(root, '**/*.' . ext, 0, 1)
+      let rel_path = struct#utils#to_relative_path(file)
+      let files[rel_path] = 1
+    endfor
+  endfor
+  return keys(files)
+endfunction
+
 " Public functions to query workflows
 " DO NOT MODIFY WORKFLOW OBJECTS HERE - RETURN COPIES ONLY
 " You can only modify workflows on startup during struct#initialize
