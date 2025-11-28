@@ -1,36 +1,3 @@
-# DONE
-[X] workflow specific open/create command (without name sugar), expects path relative to workflow root
-[X] tabcomplete for relative path workflow specific open
-[X] ! generic open/create command (without name sugar), expects path relative to repo root
-[X] ! tabcomplete for generic specific open
-[X] initialize function that lets you create workflows with a repository root
-[X] basic workflow validation
-[X] repository root validation
-[X] generic open function that resolves the workflow and checks the extension
-[X] resolve to most specific workflow
-[X] function to parse a human friendly title format string, to make a title config
-[X] workflow specific title generation function, with support for dates
-[X] open function that takes title and variables, and calls into generic function
-[X] ! refactor autoload/struct.vim
-[X] move from g:struct_context['$var'], to using a:var
-- parse the title_format during workfow normalization, so you can pull it out whenever without rerunning
-- in `struct#execute`
-  - fetch the configured variables
-  - define them as function args
-  - set them from g:struct_context map
-[X] ! templates for default file content (MVP version of this actually might be done? Check...)
-[X] ! finish off the wikilinks autocomplete in mdpp
-[X] MDPP bug: <C-f> doesn't add in the right place when in the middle of some text
-[X] MDPP bug: multi-line links
-[X] add support for non-title variables in templates
-[X] ! default variable values
-- validate variable config structure
-- validate no collisions (e.g. optional in title and config don't match, default
-  set for non-optional variable) in init.vim
-- apply default values in struct#open#open
-[X] ! test using a datestring as the default value of an optional variable in a title (e.g. capture title `%Y-%m-%d $title?` where $title defaults to `%H%M%S`)
-[X] ! workflow specific create/open command with name sugar
-
 # Bugs
 [ ] `:PageOpen` tab complete lists everything (i.e. not just ./ files, but
 ./capture/ and ./whatever/ files too). We should change the semantics to only
