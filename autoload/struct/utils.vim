@@ -31,9 +31,30 @@ function! s:get_workflow(workflow_name)
   return g:struct_workflows[a:workflow_name]
 endfunction
 
+function! struct#utils#filter_files_by_workflow(file_list, workflow_name)
+  let matched_files = []
+  for file in a:file_list
+    " we use s:find_matching_workflow and not struct#utils#resolve_workflow,
+    " because it doesn't throw and this is called in contexts where throwing
+    " would be obnoxious.
+    let workflow = s:find_matching_workflow(struct#utils#from_relative_path(file))
+    if workflow ==# a:workflow_name
+      call add(matched_files, file)
+    endif
+  endfor
+  return matched_files
+endfunction
+
 " Public functions for path conversions
 
+function! s:is_absolute_path(path)
+  return a:path ==# fnamemodify(a:path, ':p')
+endfunction
+
 function! struct#utils#to_relative_path(full_path)
+  if ! s:is_absolute_path(a:full_path)
+    return a:full_path
+  endif
   let repo_root = simplify(fnamemodify(g:struct_repo_root, ':p'))
   let abs_full_path = simplify(fnamemodify(a:full_path, ':p'))
   if stridx(abs_full_path, repo_root) == 0
@@ -45,6 +66,9 @@ function! struct#utils#to_relative_path(full_path)
 endfunction
 
 function! struct#utils#from_relative_path(rel_path)
+  if s:is_absolute_path(a:rel_path)
+    return a:rel_path
+  endif
   let repo_root = simplify(fnamemodify(g:struct_repo_root, ':p'))
   return simplify(fnamemodify(repo_root . '/' . a:rel_path, ':p'))
 endfunction

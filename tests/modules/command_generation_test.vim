@@ -116,6 +116,40 @@ function! TestCommandCompletion()
   endif
 endfunction
 
+function! TestWorkflowFileListFilter()
+  call struct#initialize(g:test_workspace . '/RepoRoot', {
+        \   'Page': {
+        \     'root': './',
+        \     'ext': 'md',
+        \     'title_format': '$title',
+        \   },
+        \   'Note': {
+        \     'root': 'notes/',
+        \     'ext': 'md',
+        \     'title_format': '$title',
+        \   },
+        \   'Log': {
+        \     'root': 'logs/',
+        \     'ext': 'txt',
+        \     'title_format': '%Y-%m-%d',
+        \   },
+        \ })
+
+  " Create test files
+  call s:create_file('PageOne.md', ['# Page One'])
+  call s:create_file('notes/NoteOne.md', ['# Note One'])
+  call s:create_file('logs/2024-06-01.txt', ['Log Entry 1'])
+  call s:create_file('logs/2024-06-02.txt', ['Log Entry 2'])
+
+  let all_files = struct#utils#all_repo_files()
+  let note_files = struct#utils#filter_files_by_workflow(all_files, 'Note')
+  call AssertEqual([ 'notes/NoteOne.md' ], note_files,
+        \ "Filtering files for 'Note' workflow returned incorrect results")
+  let page_files = struct#utils#filter_files_by_workflow(all_files, 'Page')
+  call AssertEqual([ 'PageOne.md' ], page_files,
+        \ "Filtering files for 'Page' workflow returned incorrect results")
+endfunction
+
 function! s:create_file(relative_path, content)
   call mkdir(fnamemodify(a:relative_path, ':h'), 'p')
   let filepath = g:test_workspace . '/RepoRoot/' . a:relative_path

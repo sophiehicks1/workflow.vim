@@ -92,6 +92,7 @@ function! s:workflow_open_completion_function(workflow_name)
         \ . "\n    let pattern .= char . '.*'"
         \ . "\n  endfor"
         \ . "\n  let pattern = pattern . '\\c'"
+        \ . "\n  let files = struct#utils#filter_files_by_workflow(files, '" . a:workflow_name . "')"
         \ . "\n  return filter(files, 'v:val =~ pattern')"
         \ . "\nendfunction"
   return func_name
