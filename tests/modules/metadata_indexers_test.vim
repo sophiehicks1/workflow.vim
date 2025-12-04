@@ -440,6 +440,7 @@ function! TestBackgroundIndexAndDeleteBacklog()
 endfunction
 
 function! TestDeleteFromIndex()
+  let g:workflow_metadata_log_level = 'debug'
   call struct#initialize(g:test_workspace . '/BackgroundIndexingRepo', {
         \ 'Page': {'root': 'notes/', 'ext': 'md'},
         \ })
@@ -473,7 +474,9 @@ function! TestDeleteFromIndex()
         \ 'File should be indexed before deletion')
 
   " Delete the file from the index
+call Debug('before delete_from_index')
   call struct#metadata#delete_from_index(1, ['notes/ToBeDeleted.md'])
+call Debug('after delete_from_index')
 
   " Verify that the file is no longer indexed
   let csv_results_after_delete = struct#csv#read_file(metadata_file)
@@ -502,7 +505,8 @@ function! TestIndexCompression()
   call struct#metadata#register_viml_indexer('word_indexer', function('WordIndexer'))
  
   " Confirm that notes/Foobar.md is indexed
-  let rows = struct#csv#read_file(struct#utils#to_absolute_path('.metadata/words.csv'))
+  let path = struct#utils#to_absolute_path('.metadata/words.csv')
+  let rows = struct#csv#read_file(path)
   let foobar_rows = filter(copy(rows), {idx, val -> val.__source_file == 'notes/Foobar.md'})
   let num_foobar_rows_before = len(foobar_rows)
   call Assert(num_foobar_rows_before != 0, 'notes/Foobar.md should be indexed initially')

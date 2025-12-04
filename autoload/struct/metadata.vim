@@ -449,6 +449,9 @@ endfunction
 " This garbage is needed because filecopy() in vim fails silently and
 " counterintuitively in a bunch of different ways.
 function! s:safe_filecopy(locked_file, dest_file) abort
+  if !filereadable(a:locked_file)
+    throw 'Source file is not readable: ' . a:locked_file
+  endif
   if filereadable(a:dest_file)
     call struct#metadata#log_debug('Deleting existing metadata file in repo: ' . a:dest_file)
     let delete_result = ! delete(a:dest_file)
@@ -508,9 +511,10 @@ function! struct#metadata#index_files(job_id, files) abort
 endfunction
 
 function! s:delete_files_from_index(files)
-  let all_index_files = globpath(struct#utils#to_absolute_path('.metadata'), '*.csv', 0, 1)
+  let index_files = globpath(struct#utils#to_absolute_path('.metadata'), '*.csv', 0, 1)
+  let locked_index_files = struct#metadata#lock_files(index_files, v:false)
   let updated_index_files = []
-  for index_file in all_index_files
+  for index_file in locked_index_files
     call struct#metadata#log_debug('Processing index file for deletions: ' . index_file)
     let rows = struct#csv#read_file(index_file)
     let filtered_rows = []
@@ -588,6 +592,7 @@ function! struct#metadata#compress_index(job_id) abort
     let index_files = map(globpath(struct#utils#to_absolute_path('.metadata'), '*.csv', 0, 1), 'struct#utils#to_relative_path(v:val)')
     call struct#metadata#log_info('Found ' . len(index_files) . ' index files to compress.')
     let results = s:with_all_file_locks(index_files, {file -> s:compress_index_file(file)})
+    " FIXME check whether these are the live copies or the locked copies
     call s:persist_updated_files(keys(results))
     call struct#metadata#log_info('Index compression job complete.')
   catch
