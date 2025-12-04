@@ -31,13 +31,14 @@ function! s:get_workflow(workflow_name)
   return g:struct_workflows[a:workflow_name]
 endfunction
 
+
 function! struct#utils#filter_files_by_workflow(file_list, workflow_name)
   let matched_files = []
   for file in a:file_list
     " we use s:find_matching_workflow and not struct#utils#resolve_workflow,
     " because it doesn't throw and this is called in contexts where throwing
     " would be obnoxious.
-    let workflow = s:find_matching_workflow(struct#utils#from_relative_path(file))
+    let workflow = s:find_matching_workflow(struct#utils#to_absolute_path(file))
     if workflow ==# a:workflow_name
       call add(matched_files, file)
     endif
@@ -65,7 +66,7 @@ function! struct#utils#to_relative_path(full_path)
   endif
 endfunction
 
-function! struct#utils#from_relative_path(rel_path)
+function! struct#utils#to_absolute_path(rel_path)
   if s:is_absolute_path(a:rel_path)
     return a:rel_path
   endif
@@ -74,7 +75,7 @@ function! struct#utils#from_relative_path(rel_path)
 endfunction
 
 function! struct#utils#resolve_wiki_link(wiki_link_target)
-  let full_path_without_ext = struct#utils#from_relative_path(a:wiki_link_target)
+  let full_path_without_ext = struct#utils#to_absolute_path(a:wiki_link_target)
   let workflow_name = struct#utils#resolve_workflow(full_path_without_ext)
   let ext = struct#utils#workflow_ext(workflow_name)
   return a:wiki_link_target . '.' . ext

@@ -2,7 +2,7 @@
 
 " Initialize global state for the metadata subsystem
 function! struct#metadata#initialize() abort
-  let job_state_dir = struct#utils#from_relative_path('.jobstate')
+  let job_state_dir = struct#utils#to_absolute_path('.jobstate')
   if !isdirectory(job_state_dir)
     call mkdir(job_state_dir, 'p')
   endif
@@ -11,7 +11,7 @@ function! struct#metadata#initialize() abort
 endfunction
 
 function! s:log(message) abort
-  let log_file = struct#utils#from_relative_path('.log')
+  let log_file = struct#utils#to_absolute_path('.log')
   let timestamp = strftime('%Y-%m-%d %H:%M:%S')
   let log_message = '[' . timestamp . '][' . s:get_job_id() . '] '. a:message
   call writefile([log_message], log_file, 'a')
@@ -152,7 +152,7 @@ function! s:try_getting_locks(job_dir, files, skip_non_existent) abort
   " Copy all files first...
   let locked_files = []
   for relative_path in a:files
-    let absolute_path = struct#utils#from_relative_path(relative_path)
+    let absolute_path = struct#utils#to_absolute_path(relative_path)
     if !filereadable(absolute_path)
       if a:skip_non_existent
         continue
@@ -478,7 +478,7 @@ endfunction
 function! s:persist_updated_files(locked_output_files) abort
   for locked_file in a:locked_output_files
     let relative_path = s:path_relative_to_job_dir(locked_file)
-    let dest_file = struct#utils#from_relative_path(relative_path)
+    let dest_file = struct#utils#to_absolute_path(relative_path)
     call struct#metadata#log_debug('Copying locked metadata file back to repo: ' . locked_file . ' -> ' . dest_file)
     call s:safe_filecopy(locked_file, dest_file)
   endfor
@@ -508,7 +508,7 @@ function! struct#metadata#index_files(job_id, files) abort
 endfunction
 
 function! s:delete_files_from_index(files)
-  let all_index_files = globpath(struct#utils#from_relative_path('.metadata'), '*.csv', 0, 1)
+  let all_index_files = globpath(struct#utils#to_absolute_path('.metadata'), '*.csv', 0, 1)
   let updated_index_files = []
   for index_file in all_index_files
     call struct#metadata#log_debug('Processing index file for deletions: ' . index_file)
@@ -585,7 +585,7 @@ function! struct#metadata#compress_index(job_id) abort
   call struct#metadata#log_info('Starting index compression job.')
 
   try
-    let index_files = map(globpath(struct#utils#from_relative_path('.metadata'), '*.csv', 0, 1), 'struct#utils#to_relative_path(v:val)')
+    let index_files = map(globpath(struct#utils#to_absolute_path('.metadata'), '*.csv', 0, 1), 'struct#utils#to_relative_path(v:val)')
     call struct#metadata#log_info('Found ' . len(index_files) . ' index files to compress.')
     let results = s:with_all_file_locks(index_files, {file -> s:compress_index_file(file)})
     call s:persist_updated_files(keys(results))
@@ -601,7 +601,7 @@ endfunction
 " Get the last indexed timestamp for all file/indexer combinations
 function! s:file_and_indexer_update_times() abort
   let last_updates = {}
-  let metadata_files = globpath(struct#utils#from_relative_path('.metadata'), '*.csv', 0, 1)
+  let metadata_files = globpath(struct#utils#to_absolute_path('.metadata'), '*.csv', 0, 1)
   for metadata_file in metadata_files
     let rows = struct#csv#read_file(metadata_file)
     for row in rows
@@ -622,7 +622,7 @@ endfunction
 function! s:get_files_to_index(all_files, last_updates) abort
   let files_to_index = []
   for file in a:all_files
-    let absolute_path = struct#utils#from_relative_path(file)
+    let absolute_path = struct#utils#to_absolute_path(file)
     let file_update_timestamp = s:get_file_timestamp(absolute_path)
     let needs_indexing = 0
     if !has_key(a:last_updates, file)

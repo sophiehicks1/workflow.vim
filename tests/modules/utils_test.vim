@@ -14,7 +14,7 @@ function! TestRelativePathUtil()
         \ "Relative path conversion is incorrect")
 
   " Test converting back to full path
-  let converted_full_path = struct#utils#from_relative_path(rel_path)
+  let converted_full_path = struct#utils#to_absolute_path(rel_path)
   call AssertEqual(full_path, converted_full_path,
         \ "Full path conversion is incorrect")
 

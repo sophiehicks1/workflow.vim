@@ -466,7 +466,7 @@ function! TestDeleteFromIndex()
   call struct#metadata#index_files(1, ['notes/ToBeDeleted.md'])
 
   " Verify that the file is indexed
-  let metadata_file = struct#utils#from_relative_path('.metadata/words.csv')
+  let metadata_file = struct#utils#to_absolute_path('.metadata/words.csv')
   let csv_results = struct#csv#read_file(metadata_file)
   let indexed_files = uniq(map(deepcopy(csv_results), {idx, val -> val.__source_file}))
   call Assert(index(indexed_files, 'notes/ToBeDeleted.md') != -1,
@@ -502,21 +502,21 @@ function! TestIndexCompression()
   call struct#metadata#register_viml_indexer('word_indexer', function('WordIndexer'))
  
   " Confirm that notes/Foobar.md is indexed
-  let rows = struct#csv#read_file(struct#utils#from_relative_path('.metadata/words.csv'))
+  let rows = struct#csv#read_file(struct#utils#to_absolute_path('.metadata/words.csv'))
   let foobar_rows = filter(copy(rows), {idx, val -> val.__source_file == 'notes/Foobar.md'})
   let num_foobar_rows_before = len(foobar_rows)
   call Assert(num_foobar_rows_before != 0, 'notes/Foobar.md should be indexed initially')
 
   " Confirm that there are more rows after indexing again (duplicate entries)
   call struct#metadata#index_files(1, ['notes/Foobar.md'])
-  let rows = struct#csv#read_file(struct#utils#from_relative_path('.metadata/words.csv'))
+  let rows = struct#csv#read_file(struct#utils#to_absolute_path('.metadata/words.csv'))
   let foobar_rows = filter(copy(rows), {idx, val -> val.__source_file == 'notes/Foobar.md'})
   let num_foobar_rows_after = len(foobar_rows)
   call Assert(num_foobar_rows_after > num_foobar_rows_before, 'Re-indexing should create duplicate entries')
 
   " Now, run compression
   call struct#metadata#compress_index(1)
-  let rows = struct#csv#read_file(struct#utils#from_relative_path('.metadata/words.csv'))
+  let rows = struct#csv#read_file(struct#utils#to_absolute_path('.metadata/words.csv'))
   let foobar_rows = filter(copy(rows), {idx, val -> val.__source_file == 'notes/Foobar.md'})
   let num_foobar_rows_after_compression = len(foobar_rows)
   call Assert(num_foobar_rows_after_compression <= num_foobar_rows_before,
