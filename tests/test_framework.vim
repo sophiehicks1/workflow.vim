@@ -491,3 +491,9 @@ function! DebugWorkspace(name)
   echom "Debug workspace copied to ./temp_debug_" . a:name
 endfunction
 
+function! DebugTree(prefix='tree')
+  let tree = system('tree -a ' . struct#utils#repo_root() . ' 2>/dev/null')
+  for line in split(tree, "\n")
+    call Debug(a:prefix . ': ' . line)
+  endfor
+endfunction
