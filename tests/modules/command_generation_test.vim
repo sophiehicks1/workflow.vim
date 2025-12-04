@@ -157,7 +157,6 @@ function! TestWorkflowFileListFilter()
 endfunction
 
 function! s:create_file(relative_path, content)
-  call mkdir(fnamemodify(a:relative_path, ':h'), 'p')
   let filepath = g:test_workspace . '/RepoRoot/' . a:relative_path
   call mkdir(fnamemodify(filepath, ':h'), 'p')
   call writefile(a:content, filepath)
