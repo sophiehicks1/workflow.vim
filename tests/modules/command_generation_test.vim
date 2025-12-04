@@ -148,6 +148,12 @@ function! TestWorkflowFileListFilter()
   let page_files = struct#utils#filter_files_by_workflow(all_files, 'Page')
   call AssertEqual([ 'PageOne.md' ], page_files,
         \ "Filtering files for 'Page' workflow returned incorrect results")
+
+  " Clean up test files
+  call delete(g:test_workspace . '/RepoRoot/PageOne.md')
+  call delete(g:test_workspace . '/RepoRoot/notes/NoteOne.md')
+  call delete(g:test_workspace . '/RepoRoot/logs/2024-06-01.txt')
+  call delete(g:test_workspace . '/RepoRoot/logs/2024-06-02.txt')
 endfunction
 
 function! s:create_file(relative_path, content)
@@ -175,7 +181,7 @@ function! TestGenericOpenCommand()
     execute 'WorkflowOpen ' . relative_path
     call AssertEqual(g:test_workspace . '/RepoRoot/' . relative_path, bufname('%'),
           \ "File opened by ':WorkflowOpen' command is incorrect")
-    call delete(relative_path)
+    call delete(g:test_workspace . '/RepoRoot/' . relative_path)
   endif
 endfunction
 
@@ -217,15 +223,69 @@ function! TestWorkflowSpecificCommand()
         \   'ext': 'md',
         \   'title_format': '$title',
         \ },
+        \ 'Capture': {
+        \   'root': 'capture/',
+        \   'ext': 'md',
+        \   'title_format': '%Y-%m-%d $title',
+        \ },
         \ })
 
+  " Test with a regular workflow...
+  call Assert(exists(':CaptureOpen') == 2, "Command ':CaptureOpen' should be defined")
+  if exists(':CaptureOpen')
+    let relative_path = 'capture/2024-06-15 Meeting.md'
+    call s:create_file(relative_path, ['# Capture Meeting'])
+    CaptureOpen 2024-06-15 Meeting.md
+    call AssertEqual(g:test_workspace . '/RepoRoot/capture/2024-06-15 Meeting.md', bufname('%'),
+          \ "File opened by ':CaptureOpen' command is incorrect")
+    call delete(relative_path)
+  endif
+
+  " ...and with a workflow rooted at repo root
   call Assert(exists(':PageOpen') == 2, "Command ':PageOpen' should be defined")
   if exists(':PageOpen')
     let relative_path = 'My First Page.md'
     call s:create_file(relative_path, ['# My First Page'])
-    PageOpen ./My First Page.md
+    PageOpen My First Page.md
     call AssertEqual(g:test_workspace . '/RepoRoot/My First Page.md', bufname('%'),
           \ "File opened by ':PageOpen' command is incorrect")
+    call delete(relative_path)
+  endif
+endfunction
+
+function! TestWorkflowOpenCommandCompletion()
+  call struct#initialize(g:test_workspace . '/RepoRoot', {
+        \ 'Page': {
+        \   'root': './',
+        \   'ext': 'md',
+        \   'title_format': '$title',
+        \ },
+        \ 'Capture': {
+        \   'root': 'capture/',
+        \   'ext': 'md',
+        \   'title_format': '%Y-%m-%d $title',
+        \ },
+        \ })
+
+  " Test with a regular workflow...
+  call Assert(exists(':CaptureOpen') == 2, "Command ':CaptureOpen' should be defined")
+  if exists(':CaptureOpen')
+    let relative_path = 'capture/2024-06-15 Meeting.md'
+    call s:create_file(relative_path, ['# Capture Meeting'])
+    let completions = StructAutogen_complete_Capture_Open('2024', 'CaptureOpen 2024', 15)
+    call AssertEqual([ '2024-06-15 Meeting.md' ], completions,
+          \ "Completion function for ':CaptureOpen' command returned incorrect completions")
+    call delete(relative_path)
+  endif
+
+  " ...and with a workflow rooted at repo root
+  call Assert(exists(':PageOpen') == 2, "Command ':PageOpen' should be defined")
+  if exists(':PageOpen')
+    let relative_path = 'My First Page.md'
+    call s:create_file(relative_path, ['# My First Page'])
+    let completions = StructAutogen_complete_Page_Open('', 'PageOpen ', 10)
+    call AssertEqual([ 'My First Page.md' ], completions,
+          \ "Completion function for ':PageOpen' command returned incorrect completions")
     call delete(relative_path)
   endif
 endfunction

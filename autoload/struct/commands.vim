@@ -86,13 +86,13 @@ function! s:workflow_open_completion_function(workflow_name)
   execute 'function! ' . func_name . '(ArgLead, CmdLine, CursorPos) abort'
         \ . "\n  let workflow_root = struct#utils#workflow_root('" . a:workflow_name . "')"
         \ . "\n  let files = systemlist('find ' . workflow_root . ' -type f | sort')"
+        \ . "\n  let files = struct#utils#filter_files_by_workflow(files, '" . a:workflow_name . "')"
         \ . "\n  let files = map(files, 'substitute(v:val, \"^\" . workflow_root, \"\", \"\")')"
         \ . "\n  let pattern = ''"
         \ . "\n  for char in split(a:ArgLead, '\\zs')"
         \ . "\n    let pattern .= char . '.*'"
         \ . "\n  endfor"
         \ . "\n  let pattern = pattern . '\\c'"
-        \ . "\n  let files = struct#utils#filter_files_by_workflow(files, '" . a:workflow_name . "')"
         \ . "\n  return filter(files, 'v:val =~ pattern')"
         \ . "\nendfunction"
   return func_name
