@@ -592,7 +592,6 @@ function! struct#metadata#compress_index(job_id) abort
     let index_files = map(globpath(struct#utils#to_absolute_path('.metadata'), '*.csv', 0, 1), 'struct#utils#to_relative_path(v:val)')
     call struct#metadata#log_info('Found ' . len(index_files) . ' index files to compress.')
     let results = s:with_all_file_locks(index_files, {file -> s:compress_index_file(file)})
-    " FIXME check whether these are the live copies or the locked copies
     call s:persist_updated_files(keys(results))
     call struct#metadata#log_info('Index compression job complete.')
   catch

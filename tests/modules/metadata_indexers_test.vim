@@ -474,15 +474,76 @@ function! TestDeleteFromIndex()
         \ 'File should be indexed before deletion')
 
   " Delete the file from the index
-call Debug('before delete_from_index')
   call struct#metadata#delete_from_index(1, ['notes/ToBeDeleted.md'])
-call Debug('after delete_from_index')
 
   " Verify that the file is no longer indexed
   let csv_results_after_delete = struct#csv#read_file(metadata_file)
   let indexed_files_after_delete = uniq(map(deepcopy(csv_results_after_delete), {idx, val -> val.__source_file}))
   call Assert(index(indexed_files_after_delete, 'notes/ToBeDeleted.md') == -1,
         \ 'File should be removed from index after deletion')
+endfunction
+
+function! TestIndexingEmptyFileRemovesFromBacklog()
+  let g:workflow_metadata_log_level = 'debug'
+  call struct#initialize(g:test_workspace . '/BackgroundIndexingRepo', {
+        \ 'Page': {'root': 'notes/', 'ext': 'md'},
+        \ })
+
+  function! WordIndexer()
+    let l:words = []
+    for lnum in range(1, line('$'))
+      let line = getline(lnum)
+      let l:line_words = split(line, '\W\+')
+      for word in l:line_words
+        call extend(l:words, [{'word':word, 'line':lnum}])
+      endfor
+    endfor
+    return {'words': l:words}
+  endfunction
+
+  call struct#metadata#register_viml_indexer('word_indexer', function('WordIndexer'))
+
+  Page EmptyFile
+  write
+
+  " Verify that the empty file is in the indexing backlog
+  let backlog = struct#metadata#indexing_backlog()
+  call Assert(index(backlog.to_index, 'notes/EmptyFile.md') != -1,
+        \ 'Empty file should be in indexing backlog before indexing')
+
+  " Initial indexing to set baseline
+  call struct#metadata#index_files(1, ['notes/EmptyFile.md'])
+
+  " Verify that the file is no longer in the indexing backlog
+  let backlog = struct#metadata#indexing_backlog()
+  call Assert(index(backlog.to_index, 'notes/EmptyFile.md') == -1,
+        \ 'Empty file should be removed from indexing backlog after indexing')
+
+  " Delete the empty file from the index
+  call struct#metadata#delete_from_index(1, ['notes/EmptyFile.md'])
+
+  " Verify that the file is no longer indexed
+  let metadata_file = struct#utils#to_absolute_path('.metadata/words.csv')
+  let csv_results_after_delete = struct#csv#read_file(metadata_file)
+  let indexed_files_after_delete = uniq(map(deepcopy(csv_results_after_delete), {idx, val -> val.__source_file}))
+  call Assert(index(indexed_files_after_delete, 'notes/EmptyFile.md') == -1,
+        \ 'Empty file should be removed from index after deletion')
+
+  " Verify that the file is back in the indexing backlog after index deletion
+  let backlog = struct#metadata#indexing_backlog()
+  call Assert(index(backlog.to_index, 'notes/EmptyFile.md') != -1,
+        \ 'Empty file should be back in indexing backlog after deletion from index')
+
+  " Remove the empty file
+  call delete(g:test_workspace . '/BackgroundIndexingRepo/notes/EmptyFile.md')
+
+  " Verify that the file is no longer in the indexing backlog after file deletion
+  let backlog = struct#metadata#indexing_backlog()
+  call Assert(index(backlog.to_index, 'notes/EmptyFile.md') == -1,
+        \ 'Empty file should be removed from indexing backlog after file deletion')
+
+  " Clean up
+  call delete(g:test_workspace . '/BackgroundIndexingRepo/.metadata/words.csv')
 endfunction
 
 function! TestIndexCompression()
@@ -526,3 +587,5 @@ function! TestIndexCompression()
   call Assert(num_foobar_rows_after_compression <= num_foobar_rows_before,
         \ 'Index compression should reduce the number of entries')
 endfunction
+
+" TODO test that index compression also compresses the index runs table
