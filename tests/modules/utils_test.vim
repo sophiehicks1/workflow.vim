@@ -33,10 +33,20 @@ function! TestWikiLinkResolution()
         \     'ext': 'md',
         \     'title_format': '$title',
         \   },
+        \   'Page': {
+        \     'root': './',
+        \     'ext': 'html',
+        \     'title_format': '$title',
+        \   },
         \ })
 
   let wiki_link = 'notes/Meeting Notes'
   let resolved_path = struct#utils#resolve_wiki_link(wiki_link)
   call AssertEqual('notes/Meeting Notes.md', resolved_path,
         \ "Wiki-link resolution is incorrect")
+
+  let wiki_link_page = 'Index'
+  let resolved_path_page = struct#utils#resolve_wiki_link(wiki_link_page)
+  call AssertEqual('Index.html', resolved_path_page,
+        \ "Wiki-link resolution for page is incorrect")
 endfunction
