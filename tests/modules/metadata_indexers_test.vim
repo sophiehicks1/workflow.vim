@@ -252,15 +252,15 @@ function! TestRunningASingleVimlIndexer()
   function! AbsPath(rel_path)
     return g:test_workspace . '/MetadataTestRepo/' . a:rel_path
   endfunction
-  let expected_results = {'words': [
+  let expected_word_results = [
         \ {'word': 'foo', 'line': 1,
         \  '__source_file': AbsPath('notes/NewNoteWithWords.md'), '__indexer': 'word_indexer', '__timestamp': expected_timestamp},
         \ {'word': 'bar', 'line': 1,
         \  '__source_file': AbsPath('notes/NewNoteWithWords.md'), '__indexer': 'word_indexer', '__timestamp': expected_timestamp},
         \ {'word': 'baz', 'line': 2,
         \  '__source_file': AbsPath('notes/NewNoteWithWords.md'), '__indexer': 'word_indexer', '__timestamp': expected_timestamp},
-        \ ]}
-  call AssertDeepEqual(expected_results, results, 'Indexer should extract words from the buffer correctly')
+        \ ]
+  call AssertDeepEqual(expected_word_results, results['words'], 'Indexer should extract words from the buffer correctly')
 
   " Clean up
   bd!
@@ -311,8 +311,7 @@ function! TestRunSeveralVimlIndexersOnASingleFile()
   function! AbsPath(rel_path)
     return g:test_workspace . '/MetadataTestRepo/' . a:rel_path
   endfunction
-  let expected_results = {
-        \ 'words': [
+  let expected_word_results = [
         \   {'word': 'oof', 'line': 1,
         \    '__source_file': AbsPath('notes/NewNoteWithWords.md'), '__indexer': 'title_indexer', '__timestamp': expected_timestamp},
         \   {'word': 'rab', 'line': 1,
@@ -325,13 +324,15 @@ function! TestRunSeveralVimlIndexersOnASingleFile()
         \    '__source_file': AbsPath('notes/NewNoteWithWords.md'), '__indexer': 'word_indexer', '__timestamp': expected_timestamp},
         \   {'word': 'baz', 'line': 2,
         \    '__source_file': AbsPath('notes/NewNoteWithWords.md'), '__indexer': 'word_indexer', '__timestamp': expected_timestamp},
-        \ ],
-        \ 'titles': [
+        \ ]
+  let expected_title_results = [
         \   {'title': 'foo bar',
         \    '__source_file': AbsPath('notes/NewNoteWithWords.md'), '__indexer': 'title_indexer', '__timestamp': expected_timestamp},
         \ ]
-        \ }
-  call AssertDeepEqual(expected_results, results, 'Indexers should aggregate results from multiple indexers correctly')
+  call AssertDeepEqual(expected_word_results, results['words'], 'Indexers should' .
+        \ ' aggregate word results from multiple indexers correctly')
+  call AssertDeepEqual(expected_title_results, results['titles'], 'Indexers should' .
+        \ ' aggregate title results from multiple indexers correctly')
 endfunction
 
 function! TestRegisteringIndexerBeforeInitializationThrows()
@@ -564,6 +565,13 @@ function! TestIndexCompression()
   endfunction
 
   call struct#metadata#register_viml_indexer('word_indexer', function('WordIndexer'))
+
+  " Initial indexing to set baseline
+  Page Foobar
+  call append(0, 'Foo bar baz')
+  write
+  bw!
+  call struct#metadata#index_files(1, ['notes/Foobar.md'])
  
   " Confirm that notes/Foobar.md is indexed
   let path = struct#utils#to_absolute_path('.metadata/words.csv')
@@ -571,6 +579,9 @@ function! TestIndexCompression()
   let foobar_rows = filter(copy(rows), {idx, val -> val.__source_file == 'notes/Foobar.md'})
   let num_foobar_rows_before = len(foobar_rows)
   call Assert(num_foobar_rows_before != 0, 'notes/Foobar.md should be indexed initially')
+
+  " sleep to advance the clock time, so index runs have different timestamps
+  sleep 1
 
   " Confirm that there are more rows after indexing again (duplicate entries)
   call struct#metadata#index_files(1, ['notes/Foobar.md'])

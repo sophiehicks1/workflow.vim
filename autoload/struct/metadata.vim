@@ -373,6 +373,17 @@ function! s:enrich_indexed_rows(indexer_name, indexed_file, rows) abort
   return enriched_rows
 endfunction
 
+" Runs a single registered indexer on the current buffer, and returns its
+" results enriched with metadata about source file, indexer, and timestamp. This
+" is the inner-most implementation function for indexing. It's called by
+" struct#metadata#run_all_indexers(), which in turn is called by the main
+" indexing job function struct#metadata#index_files(job_id, files)
+"
+" @arg indexer_name: name of the registered viml indexer to run
+" @return: dictionary mapping table-name to enriched rows
+"
+" This should usually be called in the context of a locked copy of a file in
+" a job directory.
 function! struct#metadata#run_indexer(indexer_name) abort
   if !exists('g:workflow_metadata_indexers')
     throw "Can't run indexer before Workflow.vim has finished initialization"
@@ -382,6 +393,7 @@ function! struct#metadata#run_indexer(indexer_name) abort
   endif
   let IndexerFunc = g:workflow_metadata_indexers[a:indexer_name]
   let results = call(IndexerFunc, [])
+  let results['indexer_runs'] = [{}] " this is blank, because enrich_indexed_rows will add the metadata
   let indexed_file = expand('%:p')
   for [table_name, rows] in items(results)
     let enriched_rows = s:enrich_indexed_rows(a:indexer_name, indexed_file, rows)
@@ -390,6 +402,7 @@ function! struct#metadata#run_indexer(indexer_name) abort
           \ ' produced ' . len(enriched_rows) . ' rows for table ' . table_name .
           \ ' from file ' . s:path_relative_to_job_dir(indexed_file))
   endfor
+
   return results
 endfunction
 
@@ -404,6 +417,13 @@ function! s:merge_indexer_results(existing_results, indexer_results) abort
   return all_results
 endfunction
 
+" Runs all registered indexers on the current buffer, and merges their results
+" into a single dictionary mapping table-name to rows.
+"
+" @return: dictionary mapping table-name to rows
+"
+" This should usually be called in the context of a locked copy of a file in
+" a job directory.
 function! struct#metadata#run_all_indexers() abort
   if !exists('g:workflow_metadata_indexers')
     throw "Can't run indexers before Workflow.vim has finished initialization"
@@ -417,7 +437,11 @@ function! struct#metadata#run_all_indexers() abort
   return all_results
 endfunction
 
-" Indexing job
+" Internal implementation of an indexing job. Opens a file, runs all registered
+" indexers on it, wipes the buffer from memory and returns the merged results.
+"
+" @arg file: absolute path to the locked copy of the file to index
+" @return: dictionary mapping table-name to rows
 function! s:index_file(file) abort
   call struct#metadata#log_info('Indexing file: ' . a:file)
   execute 'e ' . a:file
@@ -487,6 +511,17 @@ function! s:persist_updated_files(locked_output_files) abort
   endfor
 endfunction
 
+" Main indexing job function. Acquires locks for the given files, runs all
+" registered indexers on each file, merges the results, and writes them to
+" the metadata store.
+"
+" @arg job_id: unique id for this indexing job. Note, this must be unique across
+"            all running vim instances, not just within this instance.
+" @arg files: list of file paths to index
+"
+" Usually, it makes sense to use a single main vim instance to coordinate all
+" indexing, and for that that to shell out to spawn subsidiary vim instances to
+" run indexing jobs, using the vim job id from the main instance as the job id.
 function! struct#metadata#index_files(job_id, files) abort
   try
     call struct#metadata#initialize_job(a:job_id)
@@ -553,6 +588,11 @@ endfunction
 
 " for a given (__source_file, __indexer) pair, keep only the rows from the
 " most recent __timestamp
+"
+" @arg index_file: path to the locked copy of the index file to compress
+" @return: none
+"
+" Modifies the locked copy of the index file in place to remove duplicate rows.
 function! s:compress_index_file(index_file) abort
   call struct#metadata#log_info('Compressing index file: ' . a:index_file)
   let rows = struct#csv#read_file(a:index_file)
@@ -568,8 +608,9 @@ function! s:compress_index_file(index_file) abort
         call add(compressed_rows, row)
       endif
     else
-      throw 'Inconsistent state: no update time found for file ' . source_file .
-            \ ' and indexer ' . indexer
+      throw 'Inconsistent state: Index rows found for file ' . source_file .
+            \ ' and indexer ' . indexer . ' in index file ' . a:index_file .
+            \ ' but no update time recorded in indexer_runs.csv'
     endif
   endfor
   let num_removed = len(rows) - len(compressed_rows)
@@ -605,20 +646,23 @@ endfunction
 " Get the last indexed timestamp for all file/indexer combinations
 function! s:file_and_indexer_update_times() abort
   let last_updates = {}
-  let metadata_files = globpath(struct#utils#to_absolute_path('.metadata'), '*.csv', 0, 1)
-  for metadata_file in metadata_files
-    let rows = struct#csv#read_file(metadata_file)
-    for row in rows
-      let file = row['__source_file']
-      let indexer = row['__indexer']
-      let timestamp = str2nr(row['__timestamp'])
-      if !has_key(last_updates, file)
-        let last_updates[file] = {}
-      endif
-      if !has_key(last_updates[file], indexer) || timestamp > last_updates[file][indexer]
-        let last_updates[file][indexer] = timestamp
-      endif
-    endfor
+  let indexer_runs_file = struct#utils#to_absolute_path('.metadata/indexer_runs.csv')
+  if !filereadable(indexer_runs_file)
+    return last_updates
+  endif
+  " let metadata_files = globpath(struct#utils#to_absolute_path('.metadata'), '*.csv', 0, 1)
+  " for metadata_file in metadata_files
+  let rows = struct#csv#read_file(indexer_runs_file)
+  for row in rows
+    let file = row['__source_file']
+    let indexer = row['__indexer']
+    let timestamp = str2nr(row['__timestamp'])
+    if !has_key(last_updates, file)
+      let last_updates[file] = {}
+    endif
+    if !has_key(last_updates[file], indexer) || timestamp > last_updates[file][indexer]
+      let last_updates[file][indexer] = timestamp
+    endif
   endfor
   return last_updates
 endfunction
