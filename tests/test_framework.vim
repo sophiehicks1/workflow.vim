@@ -488,7 +488,7 @@ endfunction
 
 function! DebugWorkspace(name)
   call system('cp -r ' . g:test_workspace . ' ./temp_debug_' . a:name)
-  echom "Debug workspace copied to ./temp_debug_" . a:name
+  echom "Debug workspace copied to ./workspace_" . a:name
 endfunction
 
 function! DebugTree(prefix='tree')
