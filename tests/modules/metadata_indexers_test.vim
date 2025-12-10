@@ -548,7 +548,7 @@ function! TestIndexingEmptyFileRemovesFromBacklog()
 endfunction
 
 function! TestIndexCompression()
-  call struct#initialize(g:test_workspace . '/BackgroundIndexingRepo', {
+  call struct#initialize(g:test_workspace . '/IndexCompressionRepo', {
         \ 'Page': {'root': 'notes/', 'ext': 'md'},
         \ })
 
@@ -579,6 +579,10 @@ function! TestIndexCompression()
   let foobar_rows = filter(copy(rows), {idx, val -> val.__source_file == 'notes/Foobar.md'})
   let num_foobar_rows_before = len(foobar_rows)
   call Assert(num_foobar_rows_before != 0, 'notes/Foobar.md should be indexed initially')
+  let indexer_runs_file = struct#utils#to_absolute_path('.metadata/indexer_runs.csv')
+  let indexer_runs = struct#csv#read_file(indexer_runs_file)
+  let num_indexer_runs_before = len(indexer_runs)
+  call Assert(num_indexer_runs_before == 1, 'There should be one indexer run recorded initially')
 
   " sleep to advance the clock time, so index runs have different timestamps
   sleep 1
@@ -589,6 +593,9 @@ function! TestIndexCompression()
   let foobar_rows = filter(copy(rows), {idx, val -> val.__source_file == 'notes/Foobar.md'})
   let num_foobar_rows_after = len(foobar_rows)
   call Assert(num_foobar_rows_after > num_foobar_rows_before, 'Re-indexing should create duplicate entries')
+  let indexer_runs = struct#csv#read_file(indexer_runs_file)
+  let num_indexer_runs_before = len(indexer_runs)
+  call Assert(num_indexer_runs_before == 2, 'There should be two indexer runs recorded after re-indexing')
 
   " Now, run compression
   call struct#metadata#compress_index(1)
@@ -597,6 +604,8 @@ function! TestIndexCompression()
   let num_foobar_rows_after_compression = len(foobar_rows)
   call Assert(num_foobar_rows_after_compression <= num_foobar_rows_before,
         \ 'Index compression should reduce the number of entries')
+  let indexer_runs = struct#csv#read_file(indexer_runs_file)
+  let num_indexer_runs_after_compression = len(indexer_runs)
+  call Assert(num_indexer_runs_after_compression == 1,
+        \ 'Index compression should leave only one indexer run record')
 endfunction
-
-" TODO test that index compression also compresses the index runs table
