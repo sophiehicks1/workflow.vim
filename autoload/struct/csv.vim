@@ -144,6 +144,12 @@ function! s:merging_csv_write(file_path, dict_rows) abort
 endfunction
 
 function! struct#csv#append_to_file(file_path, dict_rows) abort
+  if empty(a:dict_rows)
+    call struct#metadata#log_debug('No rows to append to CSV file: ' . a:file_path)
+    return
+  endif
+  call struct#metadata#log_debug('Appending ' . len(a:dict_rows) .
+        \ ' rows to CSV file: ' . a:file_path)
   let existing_headers = s:get_existing_headers_from_file(a:file_path)
   let data_headers = s:get_headers_from_dict_rows(a:dict_rows)
   if empty(existing_headers)
