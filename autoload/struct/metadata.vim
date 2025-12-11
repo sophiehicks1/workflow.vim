@@ -22,7 +22,13 @@ function! s:get_log_level() abort
   if exists('g:workflow_metadata_log_level')
     let log_level = g:workflow_metadata_log_level
   endif
-  return {'error': 0, 'warn': 1, 'info': 2, 'debug': 3}[log_level]
+  return {'error': 0, 'warn': 1, 'info': 2, 'debug': 3, 'trace': 4}[log_level]
+endfunction
+
+function! struct#metadata#log_trace(message) abort
+  if s:get_log_level() >= 4
+    call s:log('TRACE: ' . a:message)
+  endif
 endfunction
 
 function! struct#metadata#log_debug(message) abort
@@ -163,6 +169,12 @@ function! s:try_getting_locks(job_dir, files, skip_non_existent) abort
         let dest_file = s:absolute_path_in_job_dir(relative_path)
         call mkdir(fnamemodify(dest_file, ':h'), 'p')
         call writefile([], dest_file)
+        if filereadable(dest_file)
+          call struct#metadata#log_debug('Created empty locked file for non-existent source file: ' . dest_file)
+        else
+          call struct#metadata#log_error('Failed to create empty locked file for non-existent source file: ' . dest_file)
+          throw 'Failed to create empty locked file for non-existent source file: ' . dest_file
+        endif
         call add(locked_files, dest_file)
       endif
     else
@@ -172,6 +184,7 @@ function! s:try_getting_locks(job_dir, files, skip_non_existent) abort
       call add(locked_files, dest_file)
     endif
   endfor
+  call struct#metadata#log_debug('Copied files to create locks: ' . join(locked_files, ', '))
   return locked_files
 endfunction
 
@@ -199,6 +212,9 @@ function! s:get_locked_files() abort
     endfor
   endfor
 
+  for file in locked_files
+    call struct#metadata#log_trace('File locked by other job: ' . file)
+  endfor
   return locked_files
 endfunction
 
@@ -466,6 +482,7 @@ function! s:write_indexing_results_to_store(results) abort
     let rows = a:results[table_name]
     call struct#csv#append_to_file(s:absolute_path_in_job_dir(output_file), rows)
   endfor
+  call struct#metadata#log_info('Metadata write complete.')
   " copy locked files back to repo
   call s:persist_updated_files(locked_output_files)
 endfunction
@@ -546,6 +563,9 @@ function! struct#metadata#index_files(job_id, files) abort
 endfunction
 
 function! s:delete_files_from_index(files)
+  for file in a:files
+    call struct#metadata#log_info('Deleting metadata for file: ' . file)
+  endfor
   let index_files = globpath(struct#utils#to_absolute_path('.metadata'), '*.csv', 0, 1)
   let locked_index_files = struct#metadata#lock_files(index_files, v:false)
   let updated_index_files = []
