@@ -203,7 +203,7 @@ function! s:get_locked_files() abort
     if job_id ==# exclude_job_id
       continue
     endif
-    let files = split(globpath(job_dir, '**/*'), "\n")
+    let files = systemlist('find ' . shellescape(job_dir) . ' -type f')
     for file in files
       if glob(file) !=# ''
         let relative_path = substitute(file, '^' . escape(job_dir . '/', '\'), '', '')
@@ -670,8 +670,6 @@ function! s:file_and_indexer_update_times() abort
   if !filereadable(indexer_runs_file)
     return last_updates
   endif
-  " let metadata_files = globpath(struct#utils#to_absolute_path('.metadata'), '*.csv', 0, 1)
-  " for metadata_file in metadata_files
   let rows = struct#csv#read_file(indexer_runs_file)
   for row in rows
     let file = row['__source_file']

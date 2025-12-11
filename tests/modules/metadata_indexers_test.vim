@@ -135,7 +135,8 @@ function! TestLockCollisionThrowsWithContinueIsFalse()
   call AssertEqual(expected_locked_files_job1, locked_files_job1, 'Job1 locked files should match expected paths')
 
   " Initialize job state for second job. N.B. THIS IS NOT A VALID USAGE PATTERN!
-  " Jobs set the current job id in global state, so they 
+  " Jobs set the current job id in global state, so this will overwrite job1's
+  " id.
   call struct#metadata#initialize_job('job2')
 
 
@@ -608,4 +609,38 @@ function! TestIndexCompression()
   let num_indexer_runs_after_compression = len(indexer_runs)
   call Assert(num_indexer_runs_after_compression == 1,
         \ 'Index compression should leave only one indexer run record')
+endfunction
+
+function! TestLockingWorksWithDotfiles()
+  " This is a regression test for an issue where lock conflicts on files inside
+  " .metadata were being silently ignored, because globpath ignores hidden files
+  " and hidden directories.
+  call struct#initialize(g:test_workspace . '/DotfileLockingRepo', {
+        \ 'Page': {'root': 'notes/', 'ext': 'md'},
+        \ })
+
+  " Initialize job state for first job
+  call struct#metadata#initialize_job('job1')
+  " Job1 locks a file inside .metadata
+  let locked_files_job1 = struct#metadata#lock_files(['.metadata/words.csv', '.config.yaml'], v:false)
+  let expected_locked_files_job1 = [
+        \ g:workflow_metadata_jobstate_dir . '/job1/.metadata/words.csv',
+        \ g:workflow_metadata_jobstate_dir . '/job1/.config.yaml'
+        \ ]
+  call AssertEqual(expected_locked_files_job1, locked_files_job1, 'Job1 locked dotfiles should match expected paths')
+
+  " Initialize job state for second job. N.B. THIS IS NOT A VALID USAGE PATTERN!
+  " Jobs set the current job id in global state, so this will overwrite job1's
+  " id.
+  call struct#metadata#initialize_job('job2')
+  " Job2 attempts to lock .metadata/words.csv with continue=false, which should
+  " throw
+  call AssertThrows(function('struct#metadata#lock_files', [['.metadata/words.csv'], v:false]),
+        \ 'Lock conflict for the following files: .metadata/words.csv')
+  call AssertThrows(function('struct#metadata#lock_files', [['.config.yaml'], v:false]),
+        \ 'Lock conflict for the following files: .config.yaml')
+  " clean up
+  call struct#metadata#cleanup_job()
+  " manually clean up job1 since job2's cleanup won't do it
+  call delete(g:workflow_metadata_jobstate_dir . '/job1', 'rf')
 endfunction
